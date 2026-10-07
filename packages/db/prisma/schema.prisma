@@ -1,0 +1,1670 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RecordStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  LOCKED
+}
+
+enum DocumentStatus {
+  DRAFT
+  ACTIVE
+  SUPERSEDED
+  CANCELLED
+  ARCHIVED
+}
+
+enum ValueType {
+  STRING
+  NUMBER
+  BOOLEAN
+  JSON
+  SECRET
+}
+
+enum PartnerType {
+  CUSTOMER
+  SUPPLIER
+  BOTH
+  CONTENT_PROVIDER
+  AGGREGATOR
+  TECHNOLOGY_PARTNER
+  OTHER
+}
+
+enum PartnerStatus {
+  PROSPECT
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  BLACKLISTED
+  ARCHIVED
+}
+
+enum ContactRole {
+  COMMERCIAL
+  TECHNICAL
+  FINANCE
+  LEGAL
+  MANAGEMENT
+  OTHER
+}
+
+enum ServiceCategory {
+  VAS
+  DIGITAL_CONTENT
+  PLATFORM
+  SOFTWARE
+  CONSULTING
+  MANAGED_SERVICE
+  LICENSE
+  HOSTING
+  INTEGRATION
+  PROJECT_SERVICE
+  OTHER
+}
+
+enum BusinessModel {
+  REVENUE_SHARE
+  FIXED_FEE
+  SUBSCRIPTION
+  LICENSE
+  COMMISSION
+  PROJECT
+  USAGE_BASED
+  OTHER
+}
+
+enum ContractBusinessType {
+  REVENUE_SHARE
+  PROJECT
+  PURCHASE
+  FRAMEWORK
+  OTHER
+}
+
+enum ContractType {
+  MAIN
+  ADDENDUM
+  AMENDMENT
+  EXTENSION
+  FRAMEWORK
+  PURCHASE_ORDER
+  OTHER
+}
+
+enum ContractStatus {
+  DRAFT
+  UNDER_REVIEW
+  APPROVED
+  READY_TO_SIGN
+  SIGNED
+  ACTIVE
+  COMPLETED
+  LIQUIDATING
+  LIQUIDATED
+  EXPIRED
+  TERMINATED
+  CANCELLED
+  SUPERSEDED
+}
+
+enum ContractValueType {
+  FIXED
+  ESTIMATED
+  CEILING
+  UNIT_RATE
+  REVENUE_SHARE
+  NOT_APPLICABLE
+}
+
+enum ContractPartyRole {
+  SELLER
+  BUYER
+  GUARANTOR
+  SUBCONTRACTOR
+  BENEFICIARY
+  OTHER
+}
+
+enum ChargeType {
+  ONE_TIME
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+  USAGE_BASED
+  MILESTONE
+  OTHER
+}
+
+enum PricingBasis {
+  FIXED
+  PER_USER
+  PER_TRANSACTION
+  PER_MONTH
+  PER_LICENSE
+  PER_SITE
+  PER_UNIT
+  CUSTOM
+}
+
+enum ServiceRelationshipType {
+  INCLUDED
+  AGGREGATED
+  BUNDLED
+  DEPENDENT
+}
+
+enum GuaranteePeriod {
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+  CONTRACT_TERM
+}
+
+enum ProjectStatus {
+  LEAD
+  QUALIFICATION
+  QUOTATION_PREPARING
+  QUOTATION_SENT
+  NEGOTIATION
+  WON
+  CONTRACT_PREPARING
+  CONTRACTED
+  IN_PROGRESS
+  UAT
+  ACCEPTED
+  PENDING_CLOSURE
+  CLOSED
+  ARCHIVED
+  LOST
+  NO_BID
+  ON_HOLD
+  CANCELLED
+  TERMINATED
+}
+
+enum OpportunitySource {
+  DIRECT_CUSTOMER
+  PARTNER_REFERRAL
+  TENDER
+  RFP
+  RFQ
+  INTERNAL_LEAD
+  EXISTING_CUSTOMER
+  OTHER
+}
+
+enum QualificationResult {
+  QUALIFIED
+  NEEDS_REVIEW
+  NO_BID
+}
+
+enum ProjectHealth {
+  GREEN
+  YELLOW
+  RED
+  UNKNOWN
+}
+
+enum QuotationStatus {
+  DRAFT
+  INTERNAL_REVIEW
+  APPROVED
+  SENT
+  NEGOTIATION
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  SUPERSEDED
+  CANCELLED
+}
+
+enum ApprovalRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum ApprovalActionType {
+  SUBMITTED
+  APPROVED
+  REJECTED
+  RETURNED
+  CANCELLED
+  COMMENTED
+}
+
+enum ProjectContractRole {
+  MAIN
+  ADDENDUM
+  PURCHASE
+  SUBCONTRACT
+  SUPPORT
+  OTHER
+}
+
+enum ActivationConditionType {
+  EFFECTIVE_DATE
+  ADVANCE_PAYMENT
+  PURCHASE_ORDER
+  BANK_GUARANTEE
+  LICENSE_APPROVAL
+  TECHNICAL_PREREQUISITE
+  MANUAL
+  OTHER
+}
+
+enum ActivationConditionStatus {
+  PENDING
+  SATISFIED
+  WAIVED
+  FAILED
+}
+
+enum BillingType {
+  ADVANCE
+  MILESTONE
+  PERIODIC
+  USAGE
+  FINAL
+  RETENTION
+  MANUAL
+}
+
+enum BillingTriggerType {
+  CONTRACT_SIGNED
+  CONTRACT_ACTIVE
+  DATE
+  MILESTONE_COMPLETED
+  MILESTONE_ACCEPTED
+  UAT_ACCEPTED
+  GO_LIVE
+  FINAL_ACCEPTANCE
+  DELIVERABLE_ACCEPTED
+  WARRANTY_COMPLETED
+  MANUAL
+}
+
+enum BillingTriggerStatus {
+  PENDING
+  MET
+  VERIFIED
+  WAIVED
+}
+
+enum BillingScheduleStatus {
+  NOT_DUE
+  PENDING_TRIGGER
+  ELIGIBLE
+  READY_TO_INVOICE
+  PARTIALLY_INVOICED
+  INVOICED
+  PARTIALLY_PAID
+  PAID
+  CANCELLED
+  SUPERSEDED
+}
+
+enum PaymentDueRule {
+  AFTER_INVOICE
+  AFTER_ACCEPTANCE
+  FIXED_DATE
+  AFTER_CONTRACT_SIGN
+  AFTER_GO_LIVE
+  MANUAL
+}
+
+enum PaymentScheduleStatus {
+  NOT_DUE
+  DUE
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum FxRule {
+  FIXED_RATE
+  INVOICE_DATE_RATE
+  PAYMENT_DATE_RATE
+  CENTRAL_BANK_RATE
+  CONTRACT_RATE
+  NOT_APPLICABLE
+}
+
+enum BillingRecurrence {
+  NONE
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+}
+
+enum ReconciliationStatus {
+  DRAFT
+  UPLOADED
+  OCR_EXTRACTED
+  UNDER_REVIEW
+  VALIDATED
+  PENDING_APPROVAL
+  APPROVED
+  SUPERSEDED
+  REJECTED
+  CANCELLED
+  BLOCKED
+}
+
+enum ReconciliationSourceType {
+  FILE_UPLOAD
+  MANUAL_ENTRY
+  API_IMPORT
+  SYSTEM_IMPORT
+}
+
+enum RevenueStatus {
+  GENERATED
+  VALIDATED
+  INVOICE_READY
+  INVOICED
+  PARTIALLY_PAID
+  PAID
+  SUPERSEDED
+  CANCELLED
+  BLOCKED
+}
+
+enum InvoiceMode {
+  PER_SERVICE
+  CONSOLIDATED
+}
+
+enum InvoiceScopeStatus {
+  BUILDING
+  VALID
+  INVOICE_READY
+  INVOICED
+  SUPERSEDED
+  BLOCKED
+  CANCELLED
+}
+
+enum PeriodType {
+  MONTHLY
+  QUARTERLY
+  CUSTOM
+}
+
+enum ValidationSeverity {
+  INFO
+  WARNING
+  ERROR
+  BLOCK
+}
+
+model Company {
+  id                String       @id @default(uuid()) @db.Uuid
+  companyCode       String       @unique @map("company_code")
+  companyName       String       @map("company_name")
+  shortName         String?      @map("short_name")
+  taxCode           String?      @map("tax_code")
+  address           String?
+  phone             String?
+  email             String?
+  website           String?
+  defaultCurrency   String       @default("USD") @map("default_currency") @db.VarChar(3)
+  reportingCurrency String?      @map("reporting_currency") @db.VarChar(3)
+  timezone          String       @default("UTC")
+  locale            String       @default("en")
+  status            RecordStatus @default(ACTIVE)
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+
+  users                     User[]
+  roles                     Role[]
+  configurations            Configuration[]
+  sequences                 Sequence[]
+  attachments               Attachment[]
+  documents                 Document[]
+  auditLogs                 AuditLog[]
+  partners                  Partner[]
+  partnerContacts           PartnerContact[]
+  partnerBankAccounts       PartnerBankAccount[]
+  services                  Service[]
+  partnerServices           PartnerService[]
+  serviceRelationships      ServiceRelationship[]
+  contracts                 Contract[]
+  contractParties           ContractParty[]
+  contractItems             ContractItem[]
+  contractServices          ContractService[]
+  contractTerms             ContractTerm[]
+  projects                  Project[]
+  projectQualifications     ProjectQualification[]
+  projectActivities         ProjectActivity[]
+  quotations                Quotation[]
+  quotationItems            QuotationItem[]
+  approvalWorkflows         ApprovalWorkflow[]
+  approvalSteps             ApprovalStep[]
+  approvalRequests          ApprovalRequest[]
+  approvalActions           ApprovalAction[]
+  projectContracts          ProjectContract[]
+  activationConditions      ContractActivationCondition[]
+  billingSchedules          ContractBillingSchedule[]
+  paymentSchedules          ContractPaymentSchedule[]
+  contractAdjustmentImpacts ContractAdjustmentImpact[]
+  reconciliations           Reconciliation[]
+  reconciliationItems       ReconciliationItem[]
+  commercialTermSnapshots   CommercialTermSnapshot[]
+  revenues                  Revenue[]
+  invoiceScopes             InvoiceScope[]
+  invoiceScopeItems         InvoiceScopeItem[]
+
+  @@map("companies")
+}
+
+model User {
+  id           String     @id @default(uuid()) @db.Uuid
+  companyId    String     @map("company_id") @db.Uuid
+  email        String
+  username     String?
+  passwordHash String     @map("password_hash")
+  fullName     String     @map("full_name")
+  phone        String?
+  status       UserStatus @default(ACTIVE)
+  lastLoginAt  DateTime?  @map("last_login_at")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  company Company    @relation(fields: [companyId], references: [id])
+  roles   UserRole[]
+
+  uploadedAttachments           Attachment[]                  @relation("AttachmentUploadedBy")
+  createdDocuments              Document[]                    @relation("DocumentCreatedBy")
+  auditLogs                     AuditLog[]
+  ownedPartners                 Partner[]                     @relation("PartnerOwner")
+  ownedContracts                Contract[]                    @relation("ContractOwner")
+  ownedProjects                 Project[]                     @relation("ProjectOwner")
+  projectQualifications         ProjectQualification[]        @relation("ProjectQualificationBy")
+  projectActivities             ProjectActivity[]
+  quotationSent                 Quotation[]                   @relation("QuotationSentBy")
+  quotationCreated              Quotation[]                   @relation("QuotationCreatedBy")
+  quotationApproved             Quotation[]                   @relation("QuotationApprovedBy")
+  approvalRequestsSubmitted     ApprovalRequest[]             @relation("ApprovalRequestSubmittedBy")
+  approvalActions               ApprovalAction[]              @relation("ApprovalActionBy")
+  activationConditionsSatisfied ContractActivationCondition[] @relation("ActivationConditionSatisfiedBy")
+  billingTriggersVerified       ContractBillingSchedule[]     @relation("BillingTriggerVerifiedBy")
+  reconciliationsCreated        Reconciliation[]              @relation("ReconCreatedBy")
+  reconciliationsValidated      Reconciliation[]              @relation("ReconValidatedBy")
+  reconciliationsApproved       Reconciliation[]              @relation("ReconApprovedBy")
+
+  @@unique([companyId, email])
+  @@unique([companyId, username])
+  @@index([companyId, status])
+  @@map("users")
+}
+
+model Role {
+  id          String       @id @default(uuid()) @db.Uuid
+  companyId   String       @map("company_id") @db.Uuid
+  code        String
+  name        String
+  description String?
+  status      RecordStatus @default(ACTIVE)
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  company     Company          @relation(fields: [companyId], references: [id])
+  users       UserRole[]
+  permissions RolePermission[]
+
+  @@unique([companyId, code])
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique
+  name        String
+  module      String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  roles RolePermission[]
+
+  @@index([module])
+  @@map("permissions")
+}
+
+model UserRole {
+  userId     String   @map("user_id") @db.Uuid
+  roleId     String   @map("role_id") @db.Uuid
+  assignedAt DateTime @default(now()) @map("assigned_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  roleId       String @map("role_id") @db.Uuid
+  permissionId String @map("permission_id") @db.Uuid
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model Configuration {
+  id          String    @id @default(uuid()) @db.Uuid
+  companyId   String    @map("company_id") @db.Uuid
+  configKey   String    @map("config_key")
+  configValue String?   @map("config_value")
+  valueType   ValueType @default(STRING) @map("value_type")
+  description String?
+  isSecret    Boolean   @default(false) @map("is_secret")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@unique([companyId, configKey])
+  @@map("configurations")
+}
+
+model Sequence {
+  id           String   @id @default(uuid()) @db.Uuid
+  companyId    String   @map("company_id") @db.Uuid
+  sequenceName String   @map("sequence_name")
+  prefix       String
+  currentValue BigInt   @default(0) @map("current_value")
+  padding      Int      @default(4)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@unique([companyId, sequenceName])
+  @@map("sequences")
+}
+
+model Attachment {
+  id               String   @id @default(uuid()) @db.Uuid
+  companyId        String   @map("company_id") @db.Uuid
+  originalFilename String   @map("original_filename")
+  storedFilename   String   @map("stored_filename")
+  storageProvider  String   @map("storage_provider")
+  storagePath      String   @map("storage_path")
+  mimeType         String?  @map("mime_type")
+  fileSize         BigInt?  @map("file_size")
+  checksumSha256   String?  @map("checksum_sha256")
+  uploadedById     String?  @map("uploaded_by_id") @db.Uuid
+  uploadedAt       DateTime @default(now()) @map("uploaded_at")
+
+  company               Company          @relation(fields: [companyId], references: [id])
+  uploadedBy            User?            @relation("AttachmentUploadedBy", fields: [uploadedById], references: [id])
+  documents             Document[]
+  quotationPdfs         Quotation[]
+  reconciliationSources Reconciliation[]
+
+  @@index([companyId, checksumSha256])
+  @@map("attachments")
+}
+
+model Document {
+  id             String         @id @default(uuid()) @db.Uuid
+  companyId      String         @map("company_id") @db.Uuid
+  documentCode   String         @map("document_code")
+  documentType   String         @map("document_type")
+  entityType     String?        @map("entity_type")
+  entityId       String?        @map("entity_id") @db.Uuid
+  documentNumber String?        @map("document_number")
+  versionNo      Int            @default(1) @map("version_no")
+  documentDate   DateTime?      @map("document_date") @db.Date
+  attachmentId   String         @map("attachment_id") @db.Uuid
+  status         DocumentStatus @default(ACTIVE)
+  createdById    String?        @map("created_by_id") @db.Uuid
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  company                     Company                       @relation(fields: [companyId], references: [id])
+  attachment                  Attachment                    @relation(fields: [attachmentId], references: [id])
+  createdBy                   User?                         @relation("DocumentCreatedBy", fields: [createdById], references: [id])
+  activationConditionEvidence ContractActivationCondition[]
+  officialForContracts        Contract[]                    @relation("ContractOfficialDocument")
+
+  @@unique([companyId, documentCode])
+  @@index([companyId, entityType, entityId])
+  @@map("documents")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  companyId  String   @map("company_id") @db.Uuid
+  userId     String?  @map("user_id") @db.Uuid
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String?  @map("entity_id") @db.Uuid
+  oldValue   Json?    @map("old_value")
+  newValue   Json?    @map("new_value")
+  reason     String?
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  traceId    String?  @map("trace_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  company Company @relation(fields: [companyId], references: [id])
+  user    User?   @relation(fields: [userId], references: [id])
+
+  @@index([companyId, entityType, entityId])
+  @@index([companyId, createdAt])
+  @@map("audit_logs")
+}
+
+model Partner {
+  id                  String        @id @default(uuid()) @db.Uuid
+  companyId           String        @map("company_id") @db.Uuid
+  partnerCode         String        @map("partner_code")
+  legalName           String        @map("legal_name")
+  shortName           String?       @map("short_name")
+  partnerType         PartnerType   @map("partner_type")
+  status              PartnerStatus @default(PROSPECT)
+  countryCode         String?       @map("country_code") @db.VarChar(2)
+  taxCode             String?       @map("tax_code")
+  registrationNumber  String?       @map("registration_number")
+  legalRepresentative String?       @map("legal_representative")
+  registeredAddress   String?       @map("registered_address")
+  phone               String?
+  email               String?
+  website             String?
+  defaultCurrency     String?       @map("default_currency") @db.VarChar(3)
+  paymentTermDays     Int?          @map("payment_term_days")
+  ownerUserId         String?       @map("owner_user_id") @db.Uuid
+  notes               String?
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+
+  company         Company              @relation(fields: [companyId], references: [id])
+  owner           User?                @relation("PartnerOwner", fields: [ownerUserId], references: [id])
+  contacts        PartnerContact[]
+  bankAccounts    PartnerBankAccount[]
+  partnerServices PartnerService[]
+  contracts       Contract[]
+  contractParties ContractParty[]
+  projects        Project[]
+  quotations      Quotation[]
+  reconciliations Reconciliation[]
+  revenues        Revenue[]
+  invoiceScopes   InvoiceScope[]
+
+  @@unique([companyId, partnerCode])
+  @@index([companyId, legalName])
+  @@index([companyId, taxCode])
+  @@index([companyId, status])
+  @@index([companyId, ownerUserId])
+  @@map("partners")
+}
+
+model PartnerContact {
+  id         String       @id @default(uuid()) @db.Uuid
+  companyId  String       @map("company_id") @db.Uuid
+  partnerId  String       @map("partner_id") @db.Uuid
+  fullName   String       @map("full_name")
+  jobTitle   String?      @map("job_title")
+  department String?
+  email      String?
+  phone      String?
+  whatsapp   String?
+  role       ContactRole  @default(OTHER)
+  isPrimary  Boolean      @default(false) @map("is_primary")
+  status     RecordStatus @default(ACTIVE)
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id])
+  partner Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, partnerId])
+  @@index([partnerId, role])
+  @@map("partner_contacts")
+}
+
+model PartnerBankAccount {
+  id            String       @id @default(uuid()) @db.Uuid
+  companyId     String       @map("company_id") @db.Uuid
+  partnerId     String       @map("partner_id") @db.Uuid
+  bankName      String       @map("bank_name")
+  branchName    String?      @map("branch_name")
+  accountName   String       @map("account_name")
+  accountNumber String       @map("account_number")
+  currency      String       @db.VarChar(3)
+  swiftCode     String?      @map("swift_code")
+  iban          String?
+  isPrimary     Boolean      @default(false) @map("is_primary")
+  status        RecordStatus @default(ACTIVE)
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id])
+  partner Partner @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, partnerId])
+  @@map("partner_bank_accounts")
+}
+
+model Service {
+  id                   String          @id @default(uuid()) @db.Uuid
+  companyId            String          @map("company_id") @db.Uuid
+  serviceCode          String          @map("service_code")
+  serviceName          String          @map("service_name")
+  category             ServiceCategory
+  description          String?
+  defaultBusinessModel BusinessModel?  @map("default_business_model")
+  defaultCurrency      String?         @map("default_currency") @db.VarChar(3)
+  status               RecordStatus    @default(ACTIVE)
+  createdAt            DateTime        @default(now()) @map("created_at")
+  updatedAt            DateTime        @updatedAt @map("updated_at")
+
+  company                 Company                  @relation(fields: [companyId], references: [id])
+  partnerServices         PartnerService[]
+  contractItems           ContractItem[]
+  contractServices        ContractService[]
+  quotationItems          QuotationItem[]
+  parentRelationships     ServiceRelationship[]    @relation("ParentService")
+  childRelationships      ServiceRelationship[]    @relation("ChildService")
+  reconciliationItems     ReconciliationItem[]
+  commercialTermSnapshots CommercialTermSnapshot[]
+  revenues                Revenue[]
+
+  @@unique([companyId, serviceCode])
+  @@index([companyId, category])
+  @@index([companyId, status])
+  @@map("services")
+}
+
+model PartnerService {
+  id                  String        @id @default(uuid()) @db.Uuid
+  companyId           String        @map("company_id") @db.Uuid
+  partnerId           String        @map("partner_id") @db.Uuid
+  serviceId           String        @map("service_id") @db.Uuid
+  externalServiceCode String?       @map("external_service_code")
+  businessModel       BusinessModel @map("business_model")
+  currency            String?       @db.VarChar(3)
+  revenueShareRate    Decimal?      @map("revenue_share_rate") @db.Decimal(9, 6)
+  partnerShareRate    Decimal?      @map("partner_share_rate") @db.Decimal(9, 6)
+  marketCode          String?       @map("market_code")
+  channelCode         String?       @map("channel_code")
+  effectiveFrom       DateTime      @map("effective_from") @db.Date
+  effectiveTo         DateTime?     @map("effective_to") @db.Date
+  status              RecordStatus  @default(ACTIVE)
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id])
+  partner Partner @relation(fields: [partnerId], references: [id])
+  service Service @relation(fields: [serviceId], references: [id])
+
+  @@index([companyId, partnerId, serviceId])
+  @@index([partnerId, serviceId, effectiveFrom, effectiveTo])
+  @@map("partner_services")
+}
+
+model ServiceRelationship {
+  id               String                  @id @default(uuid()) @db.Uuid
+  companyId        String                  @map("company_id") @db.Uuid
+  parentServiceId  String                  @map("parent_service_id") @db.Uuid
+  childServiceId   String                  @map("child_service_id") @db.Uuid
+  relationshipType ServiceRelationshipType @map("relationship_type")
+  effectiveFrom    DateTime                @map("effective_from") @db.Date
+  effectiveTo      DateTime?               @map("effective_to") @db.Date
+  createdAt        DateTime                @default(now()) @map("created_at")
+
+  company       Company @relation(fields: [companyId], references: [id])
+  parentService Service @relation("ParentService", fields: [parentServiceId], references: [id])
+  childService  Service @relation("ChildService", fields: [childServiceId], references: [id])
+
+  @@index([companyId, parentServiceId])
+  @@index([companyId, childServiceId])
+  @@map("service_relationships")
+}
+
+model Contract {
+  id                    String               @id @default(uuid()) @db.Uuid
+  companyId             String               @map("company_id") @db.Uuid
+  contractCode          String               @map("contract_code")
+  contractNumber        String?              @map("contract_number")
+  contractName          String               @map("contract_name")
+  partnerId             String               @map("partner_id") @db.Uuid
+  businessType          ContractBusinessType @map("business_type")
+  contractType          ContractType         @map("contract_type")
+  valueType             ContractValueType    @map("value_type")
+  parentContractId      String?              @map("parent_contract_id") @db.Uuid
+  signingDate           DateTime?            @map("signing_date") @db.Date
+  effectiveDate         DateTime?            @map("effective_date") @db.Date
+  expiryDate            DateTime?            @map("expiry_date") @db.Date
+  currency              String?              @db.VarChar(3)
+  baseContractValue     Decimal?             @map("base_contract_value") @db.Decimal(20, 4)
+  taxAmount             Decimal?             @map("tax_amount") @db.Decimal(20, 4)
+  grossContractValue    Decimal?             @map("gross_contract_value") @db.Decimal(20, 4)
+  whtAmount             Decimal?             @map("wht_amount") @db.Decimal(20, 4)
+  netExpectedCollection Decimal?             @map("net_expected_collection") @db.Decimal(20, 4)
+  paymentTermDays       Int?                 @map("payment_term_days")
+  ownerUserId           String?              @map("owner_user_id") @db.Uuid
+  status                ContractStatus       @default(DRAFT)
+  notes                 String?
+  sourceProjectId       String?              @map("source_project_id") @db.Uuid
+  sourceQuotationId     String?              @map("source_quotation_id") @db.Uuid
+  officialDocumentId    String?              @map("official_document_id") @db.Uuid
+  createdAt             DateTime             @default(now()) @map("created_at")
+  updatedAt             DateTime             @updatedAt @map("updated_at")
+
+  company                 Company                       @relation(fields: [companyId], references: [id])
+  partner                 Partner                       @relation(fields: [partnerId], references: [id])
+  owner                   User?                         @relation("ContractOwner", fields: [ownerUserId], references: [id])
+  parentContract          Contract?                     @relation("ContractHierarchy", fields: [parentContractId], references: [id])
+  childContracts          Contract[]                    @relation("ContractHierarchy")
+  parties                 ContractParty[]
+  items                   ContractItem[]
+  services                ContractService[]
+  terms                   ContractTerm[]
+  projectLinks            ProjectContract[]
+  activationConditions    ContractActivationCondition[]
+  billingSchedules        ContractBillingSchedule[]
+  paymentSchedules        ContractPaymentSchedule[]
+  sourceProject           Project?                      @relation("ContractSourceProject", fields: [sourceProjectId], references: [id])
+  sourceQuotation         Quotation?                    @relation("ContractSourceQuotation", fields: [sourceQuotationId], references: [id])
+  officialDocument        Document?                     @relation("ContractOfficialDocument", fields: [officialDocumentId], references: [id])
+  adjustmentImpact        ContractAdjustmentImpact?     @relation("AdjustmentContract")
+  adjustments             ContractAdjustmentImpact[]    @relation("AdjustedParentContract")
+  reconciliations         Reconciliation[]
+  commercialTermSnapshots CommercialTermSnapshot[]
+  revenues                Revenue[]
+  invoiceScopes           InvoiceScope[]
+
+  @@unique([companyId, contractCode])
+  @@index([companyId, partnerId])
+  @@index([companyId, status])
+  @@index([companyId, businessType])
+  @@index([companyId, expiryDate])
+  @@map("contracts")
+}
+
+model ContractParty {
+  id         String            @id @default(uuid()) @db.Uuid
+  companyId  String            @map("company_id") @db.Uuid
+  contractId String            @map("contract_id") @db.Uuid
+  partnerId  String?           @map("partner_id") @db.Uuid
+  partyRole  ContractPartyRole @map("party_role")
+  legalName  String            @map("legal_name")
+  taxCode    String?           @map("tax_code")
+  address    String?
+  signatory  String?
+  position   String?
+  createdAt  DateTime          @default(now()) @map("created_at")
+
+  company  Company  @relation(fields: [companyId], references: [id])
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  partner  Partner? @relation(fields: [partnerId], references: [id])
+
+  @@index([companyId, contractId])
+  @@map("contract_parties")
+}
+
+model ContractItem {
+  id                    String       @id @default(uuid()) @db.Uuid
+  companyId             String       @map("company_id") @db.Uuid
+  contractId            String       @map("contract_id") @db.Uuid
+  serviceId             String?      @map("service_id") @db.Uuid
+  itemNo                Int          @map("item_no")
+  description           String
+  quantity              Decimal      @default(1) @db.Decimal(20, 4)
+  unit                  String?
+  unitPrice             Decimal      @map("unit_price") @db.Decimal(20, 4)
+  discountRate          Decimal?     @map("discount_rate") @db.Decimal(9, 6)
+  discountAmount        Decimal?     @map("discount_amount") @db.Decimal(20, 4)
+  taxRate               Decimal?     @map("tax_rate") @db.Decimal(9, 6)
+  taxAmount             Decimal?     @map("tax_amount") @db.Decimal(20, 4)
+  subtotal              Decimal      @db.Decimal(20, 4)
+  lineTotal             Decimal      @map("line_total") @db.Decimal(20, 4)
+  chargeType            ChargeType   @map("charge_type")
+  pricingBasis          PricingBasis @map("pricing_basis")
+  sourceQuotationItemId String?      @map("source_quotation_item_id") @db.Uuid
+  createdAt             DateTime     @default(now()) @map("created_at")
+  updatedAt             DateTime     @updatedAt @map("updated_at")
+
+  company             Company                   @relation(fields: [companyId], references: [id])
+  contract            Contract                  @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  service             Service?                  @relation(fields: [serviceId], references: [id])
+  sourceQuotationItem QuotationItem?            @relation(fields: [sourceQuotationItemId], references: [id])
+  billingSchedules    ContractBillingSchedule[]
+
+  @@unique([contractId, itemNo])
+  @@index([companyId, contractId])
+  @@map("contract_items")
+}
+
+model ContractService {
+  id                     String           @id @default(uuid()) @db.Uuid
+  companyId              String           @map("company_id") @db.Uuid
+  contractId             String           @map("contract_id") @db.Uuid
+  serviceId              String           @map("service_id") @db.Uuid
+  businessModel          BusinessModel    @map("business_model")
+  currency               String?          @db.VarChar(3)
+  revenueShareRate       Decimal?         @map("revenue_share_rate") @db.Decimal(9, 6)
+  partnerShareRate       Decimal?         @map("partner_share_rate") @db.Decimal(9, 6)
+  fixedFee               Decimal?         @map("fixed_fee") @db.Decimal(20, 4)
+  unitPrice              Decimal?         @map("unit_price") @db.Decimal(20, 4)
+  minimumGuaranteeAmount Decimal?         @map("minimum_guarantee_amount") @db.Decimal(20, 4)
+  minimumGuaranteePeriod GuaranteePeriod? @map("minimum_guarantee_period")
+  marketCode             String?          @map("market_code")
+  channelCode            String?          @map("channel_code")
+  scopeReference         String?          @map("scope_reference")
+  effectiveFrom          DateTime         @map("effective_from") @db.Date
+  effectiveTo            DateTime?        @map("effective_to") @db.Date
+  status                 RecordStatus     @default(ACTIVE)
+  createdAt              DateTime         @default(now()) @map("created_at")
+  updatedAt              DateTime         @updatedAt @map("updated_at")
+
+  company                 Company                  @relation(fields: [companyId], references: [id])
+  contract                Contract                 @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  service                 Service                  @relation(fields: [serviceId], references: [id])
+  reconciliationItems     ReconciliationItem[]
+  commercialTermSnapshots CommercialTermSnapshot[]
+
+  @@index([companyId, contractId, serviceId])
+  @@index([contractId, serviceId, effectiveFrom, effectiveTo])
+  @@map("contract_services")
+}
+
+model ContractTerm {
+  id            String    @id @default(uuid()) @db.Uuid
+  companyId     String    @map("company_id") @db.Uuid
+  contractId    String    @map("contract_id") @db.Uuid
+  termType      String    @map("term_type")
+  termKey       String    @map("term_key")
+  termValue     String    @map("term_value")
+  valueType     ValueType @default(STRING) @map("value_type")
+  effectiveFrom DateTime? @map("effective_from") @db.Date
+  effectiveTo   DateTime? @map("effective_to") @db.Date
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  company  Company  @relation(fields: [companyId], references: [id])
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, contractId])
+  @@index([contractId, termKey])
+  @@map("contract_terms")
+}
+
+model Project {
+  id                     String            @id @default(uuid()) @db.Uuid
+  companyId              String            @map("company_id") @db.Uuid
+  projectCode            String            @map("project_code")
+  projectName            String            @map("project_name")
+  partnerId              String            @map("partner_id") @db.Uuid
+  ownerUserId            String?           @map("owner_user_id") @db.Uuid
+  description            String?
+  scope                  String?
+  source                 OpportunitySource @default(OTHER)
+  estimatedValue         Decimal?          @map("estimated_value") @db.Decimal(20, 4)
+  currency               String?           @db.VarChar(3)
+  probability            Decimal?          @db.Decimal(9, 6)
+  expectedCloseDate      DateTime?         @map("expected_close_date") @db.Date
+  expectedStartDate      DateTime?         @map("expected_start_date") @db.Date
+  expectedEndDate        DateTime?         @map("expected_end_date") @db.Date
+  actualStartDate        DateTime?         @map("actual_start_date") @db.Date
+  actualEndDate          DateTime?         @map("actual_end_date") @db.Date
+  progressPercent        Decimal           @default(0) @map("progress_percent") @db.Decimal(9, 6)
+  healthStatus           ProjectHealth     @default(UNKNOWN) @map("health_status")
+  status                 ProjectStatus     @default(LEAD)
+  acceptedQuotationId    String?           @unique @map("accepted_quotation_id") @db.Uuid
+  lostReason             String?           @map("lost_reason")
+  lostToCompetitor       String?           @map("lost_to_competitor")
+  noBidReason            String?           @map("no_bid_reason")
+  forecastCompletionDate DateTime?         @map("forecast_completion_date") @db.Date
+  forecastRemainingCost  Decimal?          @map("forecast_remaining_cost") @db.Decimal(20, 4)
+  createdAt              DateTime          @default(now()) @map("created_at")
+  updatedAt              DateTime          @updatedAt @map("updated_at")
+
+  company           Company                   @relation(fields: [companyId], references: [id])
+  partner           Partner                   @relation(fields: [partnerId], references: [id])
+  owner             User?                     @relation("ProjectOwner", fields: [ownerUserId], references: [id])
+  qualifications    ProjectQualification[]
+  activities        ProjectActivity[]
+  quotations        Quotation[]               @relation("ProjectQuotations")
+  acceptedQuotation Quotation?                @relation("AcceptedQuotation", fields: [acceptedQuotationId], references: [id])
+  contractLinks     ProjectContract[]
+  sourcedContracts  Contract[]                @relation("ContractSourceProject")
+  billingSchedules  ContractBillingSchedule[]
+
+  @@unique([companyId, projectCode])
+  @@index([companyId, partnerId])
+  @@index([companyId, ownerUserId])
+  @@index([companyId, status])
+  @@index([companyId, expectedCloseDate])
+  @@map("projects")
+}
+
+model ProjectQualification {
+  id                 String              @id @default(uuid()) @db.Uuid
+  companyId          String              @map("company_id") @db.Uuid
+  projectId          String              @map("project_id") @db.Uuid
+  revisionNo         Int                 @default(1) @map("revision_no")
+  isCurrent          Boolean             @default(true) @map("is_current")
+  customerNeedScore  Int?                @map("customer_need_score")
+  budgetScore        Int?                @map("budget_score")
+  technicalScore     Int?                @map("technical_score")
+  commercialScore    Int?                @map("commercial_score")
+  timelineScore      Int?                @map("timeline_score")
+  decisionMakerScore Int?                @map("decision_maker_score")
+  strategicFitScore  Int?                @map("strategic_fit_score")
+  totalScore         Int?                @map("total_score")
+  result             QualificationResult
+  comments           String?
+  noBidReason        String?             @map("no_bid_reason")
+  qualifiedById      String?             @map("qualified_by_id") @db.Uuid
+  qualifiedAt        DateTime?           @map("qualified_at")
+  createdAt          DateTime            @default(now()) @map("created_at")
+
+  company     Company @relation(fields: [companyId], references: [id])
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  qualifiedBy User?   @relation("ProjectQualificationBy", fields: [qualifiedById], references: [id])
+
+  @@unique([projectId, revisionNo])
+  @@index([companyId, projectId, isCurrent])
+  @@map("project_qualifications")
+}
+
+model ProjectActivity {
+  id             String    @id @default(uuid()) @db.Uuid
+  companyId      String    @map("company_id") @db.Uuid
+  projectId      String    @map("project_id") @db.Uuid
+  activityType   String    @map("activity_type")
+  activityDate   DateTime  @map("activity_date")
+  summary        String
+  detail         String?
+  nextAction     String?   @map("next_action")
+  nextActionDate DateTime? @map("next_action_date")
+  userId         String?   @map("user_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  company Company @relation(fields: [companyId], references: [id])
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id])
+
+  @@index([companyId, projectId, activityDate])
+  @@index([companyId, nextActionDate])
+  @@map("project_activities")
+}
+
+model Quotation {
+  id                     String          @id @default(uuid()) @db.Uuid
+  companyId              String          @map("company_id") @db.Uuid
+  quotationCode          String          @map("quotation_code")
+  quotationNumber        String?         @map("quotation_number")
+  projectId              String          @map("project_id") @db.Uuid
+  partnerId              String          @map("partner_id") @db.Uuid
+  logicalGroupId         String          @map("logical_group_id") @db.Uuid
+  revisionNo             Int             @default(1) @map("revision_no")
+  isCurrent              Boolean         @default(true) @map("is_current")
+  supersedesId           String?         @map("supersedes_id") @db.Uuid
+  quotationDate          DateTime        @map("quotation_date") @db.Date
+  validUntil             DateTime?       @map("valid_until") @db.Date
+  currency               String          @db.VarChar(3)
+  subtotal               Decimal         @default(0) @db.Decimal(20, 4)
+  discountAmount         Decimal         @default(0) @map("discount_amount") @db.Decimal(20, 4)
+  taxAmount              Decimal         @default(0) @map("tax_amount") @db.Decimal(20, 4)
+  totalAmount            Decimal         @default(0) @map("total_amount") @db.Decimal(20, 4)
+  estimatedCost          Decimal?        @map("estimated_cost") @db.Decimal(20, 4)
+  estimatedMargin        Decimal?        @map("estimated_margin") @db.Decimal(20, 4)
+  estimatedMarginPercent Decimal?        @map("estimated_margin_percent") @db.Decimal(9, 6)
+  paymentTerms           String?         @map("payment_terms")
+  deliveryTerms          String?         @map("delivery_terms")
+  warrantyTerms          String?         @map("warranty_terms")
+  assumptions            String?
+  exclusions             String?
+  notes                  String?
+  status                 QuotationStatus @default(DRAFT)
+  submittedAt            DateTime?       @map("submitted_at")
+  approvedAt             DateTime?       @map("approved_at")
+  sentAt                 DateTime?       @map("sent_at")
+  acceptedAt             DateTime?       @map("accepted_at")
+  sentById               String?         @map("sent_by_id") @db.Uuid
+  sentTo                 String?         @map("sent_to")
+  createdById            String?         @map("created_by_id") @db.Uuid
+  approvedById           String?         @map("approved_by_id") @db.Uuid
+  pdfAttachmentId        String?         @map("pdf_attachment_id") @db.Uuid
+  createdAt              DateTime        @default(now()) @map("created_at")
+  updatedAt              DateTime        @updatedAt @map("updated_at")
+
+  company            Company           @relation(fields: [companyId], references: [id])
+  project            Project           @relation("ProjectQuotations", fields: [projectId], references: [id])
+  partner            Partner           @relation(fields: [partnerId], references: [id])
+  supersedes         Quotation?        @relation("QuotationRevision", fields: [supersedesId], references: [id])
+  supersededBy       Quotation[]       @relation("QuotationRevision")
+  sentBy             User?             @relation("QuotationSentBy", fields: [sentById], references: [id])
+  createdBy          User?             @relation("QuotationCreatedBy", fields: [createdById], references: [id])
+  approvedBy         User?             @relation("QuotationApprovedBy", fields: [approvedById], references: [id])
+  pdfAttachment      Attachment?       @relation(fields: [pdfAttachmentId], references: [id])
+  items              QuotationItem[]
+  approvalRequests   ApprovalRequest[]
+  acceptedForProject Project?          @relation("AcceptedQuotation")
+  sourcedContracts   Contract[]        @relation("ContractSourceQuotation")
+
+  @@unique([companyId, quotationCode, revisionNo])
+  @@unique([logicalGroupId, revisionNo])
+  @@index([companyId, projectId])
+  @@index([companyId, partnerId])
+  @@index([companyId, status])
+  @@index([logicalGroupId, isCurrent])
+  @@map("quotations")
+}
+
+model QuotationItem {
+  id              String       @id @default(uuid()) @db.Uuid
+  companyId       String       @map("company_id") @db.Uuid
+  quotationId     String       @map("quotation_id") @db.Uuid
+  itemNo          Int          @map("item_no")
+  serviceId       String?      @map("service_id") @db.Uuid
+  description     String
+  quantity        Decimal      @default(1) @db.Decimal(20, 4)
+  unit            String?
+  unitPrice       Decimal      @map("unit_price") @db.Decimal(20, 4)
+  discountRate    Decimal?     @map("discount_rate") @db.Decimal(9, 6)
+  discountAmount  Decimal      @default(0) @map("discount_amount") @db.Decimal(20, 4)
+  taxRate         Decimal?     @map("tax_rate") @db.Decimal(9, 6)
+  taxAmount       Decimal      @default(0) @map("tax_amount") @db.Decimal(20, 4)
+  lineSubtotal    Decimal      @map("line_subtotal") @db.Decimal(20, 4)
+  lineTotal       Decimal      @map("line_total") @db.Decimal(20, 4)
+  estimatedCost   Decimal?     @map("estimated_cost") @db.Decimal(20, 4)
+  estimatedMargin Decimal?     @map("estimated_margin") @db.Decimal(20, 4)
+  chargeType      ChargeType   @map("charge_type")
+  pricingBasis    PricingBasis @map("pricing_basis")
+  isOptional      Boolean      @default(false) @map("is_optional")
+  isSelected      Boolean      @default(true) @map("is_selected")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  company       Company        @relation(fields: [companyId], references: [id])
+  quotation     Quotation      @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  service       Service?       @relation(fields: [serviceId], references: [id])
+  contractItems ContractItem[]
+
+  @@unique([quotationId, itemNo])
+  @@index([companyId, quotationId])
+  @@map("quotation_items")
+}
+
+model ApprovalWorkflow {
+  id           String       @id @default(uuid()) @db.Uuid
+  companyId    String       @map("company_id") @db.Uuid
+  workflowCode String       @map("workflow_code")
+  workflowName String       @map("workflow_name")
+  entityType   String       @map("entity_type")
+  description  String?
+  status       RecordStatus @default(ACTIVE)
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  company  Company           @relation(fields: [companyId], references: [id])
+  steps    ApprovalStep[]
+  requests ApprovalRequest[]
+
+  @@unique([companyId, workflowCode])
+  @@index([companyId, entityType])
+  @@map("approval_workflows")
+}
+
+model ApprovalStep {
+  id                     String   @id @default(uuid()) @db.Uuid
+  companyId              String   @map("company_id") @db.Uuid
+  workflowId             String   @map("workflow_id") @db.Uuid
+  stepNo                 Int      @map("step_no")
+  stepName               String   @map("step_name")
+  requiredRoleCode       String?  @map("required_role_code")
+  requiredPermissionCode String?  @map("required_permission_code")
+  minAmount              Decimal? @map("min_amount") @db.Decimal(20, 4)
+  maxAmount              Decimal? @map("max_amount") @db.Decimal(20, 4)
+  isMandatory            Boolean  @default(true) @map("is_mandatory")
+  createdAt              DateTime @default(now()) @map("created_at")
+
+  company  Company          @relation(fields: [companyId], references: [id])
+  workflow ApprovalWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@unique([workflowId, stepNo])
+  @@map("approval_steps")
+}
+
+model ApprovalRequest {
+  id            String                @id @default(uuid()) @db.Uuid
+  companyId     String                @map("company_id") @db.Uuid
+  workflowId    String                @map("workflow_id") @db.Uuid
+  entityType    String                @map("entity_type")
+  entityId      String                @map("entity_id") @db.Uuid
+  quotationId   String?               @map("quotation_id") @db.Uuid
+  currentStepNo Int                   @default(1) @map("current_step_no")
+  status        ApprovalRequestStatus @default(PENDING)
+  submittedById String?               @map("submitted_by_id") @db.Uuid
+  submittedAt   DateTime              @default(now()) @map("submitted_at")
+  completedAt   DateTime?             @map("completed_at")
+
+  company     Company          @relation(fields: [companyId], references: [id])
+  workflow    ApprovalWorkflow @relation(fields: [workflowId], references: [id])
+  quotation   Quotation?       @relation(fields: [quotationId], references: [id])
+  submittedBy User?            @relation("ApprovalRequestSubmittedBy", fields: [submittedById], references: [id])
+  actions     ApprovalAction[]
+
+  @@index([companyId, entityType, entityId])
+  @@index([companyId, status])
+  @@map("approval_requests")
+}
+
+model ApprovalAction {
+  id         String             @id @default(uuid()) @db.Uuid
+  companyId  String             @map("company_id") @db.Uuid
+  requestId  String             @map("request_id") @db.Uuid
+  stepNo     Int                @map("step_no")
+  action     ApprovalActionType
+  actionById String?            @map("action_by_id") @db.Uuid
+  comments   String?
+  createdAt  DateTime           @default(now()) @map("created_at")
+
+  company  Company         @relation(fields: [companyId], references: [id])
+  request  ApprovalRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  actionBy User?           @relation("ApprovalActionBy", fields: [actionById], references: [id])
+
+  @@index([companyId, requestId])
+  @@map("approval_actions")
+}
+
+model ProjectContract {
+  id         String              @id @default(uuid()) @db.Uuid
+  companyId  String              @map("company_id") @db.Uuid
+  projectId  String              @map("project_id") @db.Uuid
+  contractId String              @map("contract_id") @db.Uuid
+  role       ProjectContractRole @default(MAIN)
+  isPrimary  Boolean             @default(false) @map("is_primary")
+  createdAt  DateTime            @default(now()) @map("created_at")
+
+  company  Company  @relation(fields: [companyId], references: [id])
+  project  Project  @relation(fields: [projectId], references: [id])
+  contract Contract @relation(fields: [contractId], references: [id])
+
+  @@unique([projectId, contractId])
+  @@index([companyId, projectId])
+  @@index([companyId, contractId])
+  @@map("project_contracts")
+}
+
+model ContractActivationCondition {
+  id                 String                    @id @default(uuid()) @db.Uuid
+  companyId          String                    @map("company_id") @db.Uuid
+  contractId         String                    @map("contract_id") @db.Uuid
+  conditionType      ActivationConditionType   @map("condition_type")
+  description        String?
+  isMandatory        Boolean                   @default(true) @map("is_mandatory")
+  status             ActivationConditionStatus @default(PENDING)
+  satisfiedAt        DateTime?                 @map("satisfied_at")
+  satisfiedById      String?                   @map("satisfied_by_id") @db.Uuid
+  evidenceDocumentId String?                   @map("evidence_document_id") @db.Uuid
+  waiverReason       String?                   @map("waiver_reason")
+  createdAt          DateTime                  @default(now()) @map("created_at")
+  updatedAt          DateTime                  @updatedAt @map("updated_at")
+
+  company          Company   @relation(fields: [companyId], references: [id])
+  contract         Contract  @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  satisfiedBy      User?     @relation("ActivationConditionSatisfiedBy", fields: [satisfiedById], references: [id])
+  evidenceDocument Document? @relation(fields: [evidenceDocumentId], references: [id])
+
+  @@index([companyId, contractId, status])
+  @@map("contract_activation_conditions")
+}
+
+model ContractBillingSchedule {
+  id                   String                @id @default(uuid()) @db.Uuid
+  companyId            String                @map("company_id") @db.Uuid
+  contractId           String                @map("contract_id") @db.Uuid
+  projectId            String?               @map("project_id") @db.Uuid
+  contractItemId       String?               @map("contract_item_id") @db.Uuid
+  sequenceNo           Int                   @map("sequence_no")
+  billingName          String                @map("billing_name")
+  billingType          BillingType           @map("billing_type")
+  triggerType          BillingTriggerType    @map("trigger_type")
+  triggerReferenceType String?               @map("trigger_reference_type")
+  triggerReferenceId   String?               @map("trigger_reference_id") @db.Uuid
+  triggerStatus        BillingTriggerStatus  @default(PENDING) @map("trigger_status")
+  percentage           Decimal?              @db.Decimal(9, 6)
+  scheduledAmount      Decimal               @map("scheduled_amount") @db.Decimal(20, 4)
+  invoicedAmount       Decimal               @default(0) @map("invoiced_amount") @db.Decimal(20, 4)
+  remainingBillable    Decimal               @map("remaining_billable") @db.Decimal(20, 4)
+  currency             String                @db.VarChar(3)
+  plannedBillingDate   DateTime?             @map("planned_billing_date") @db.Date
+  invoiceDueDays       Int?                  @map("invoice_due_days")
+  allowPartialBilling  Boolean               @default(false) @map("allow_partial_billing")
+  requiresInvoice      Boolean               @default(true) @map("requires_invoice")
+  taxProfileKey        String?               @map("tax_profile_key")
+  fxRule               FxRule                @default(NOT_APPLICABLE) @map("fx_rule")
+  fixedFxRate          Decimal?              @map("fixed_fx_rate") @db.Decimal(20, 8)
+  recurrence           BillingRecurrence     @default(NONE)
+  recurrenceStartDate  DateTime?             @map("recurrence_start_date") @db.Date
+  recurrenceEndDate    DateTime?             @map("recurrence_end_date") @db.Date
+  status               BillingScheduleStatus @default(PENDING_TRIGGER)
+  triggerMetAt         DateTime?             @map("trigger_met_at")
+  triggerVerifiedAt    DateTime?             @map("trigger_verified_at")
+  triggerVerifiedById  String?               @map("trigger_verified_by_id") @db.Uuid
+  createdAt            DateTime              @default(now()) @map("created_at")
+  updatedAt            DateTime              @updatedAt @map("updated_at")
+
+  company           Company                   @relation(fields: [companyId], references: [id])
+  contract          Contract                  @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  project           Project?                  @relation(fields: [projectId], references: [id])
+  contractItem      ContractItem?             @relation(fields: [contractItemId], references: [id])
+  triggerVerifiedBy User?                     @relation("BillingTriggerVerifiedBy", fields: [triggerVerifiedById], references: [id])
+  paymentSchedules  ContractPaymentSchedule[]
+
+  @@unique([contractId, sequenceNo])
+  @@index([companyId, contractId, status])
+  @@index([companyId, projectId])
+  @@index([contractItemId])
+  @@map("contract_billing_schedules")
+}
+
+model ContractPaymentSchedule {
+  id                String                @id @default(uuid()) @db.Uuid
+  companyId         String                @map("company_id") @db.Uuid
+  contractId        String                @map("contract_id") @db.Uuid
+  billingScheduleId String?               @map("billing_schedule_id") @db.Uuid
+  sequenceNo        Int                   @map("sequence_no")
+  paymentName       String                @map("payment_name")
+  percentage        Decimal?              @db.Decimal(9, 6)
+  scheduledAmount   Decimal               @map("scheduled_amount") @db.Decimal(20, 4)
+  dueRule           PaymentDueRule        @map("due_rule")
+  dueDays           Int?                  @map("due_days")
+  fixedDueDate      DateTime?             @map("fixed_due_date") @db.Date
+  currency          String                @db.VarChar(3)
+  status            PaymentScheduleStatus @default(NOT_DUE)
+  createdAt         DateTime              @default(now()) @map("created_at")
+  updatedAt         DateTime              @updatedAt @map("updated_at")
+
+  company         Company                  @relation(fields: [companyId], references: [id])
+  contract        Contract                 @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  billingSchedule ContractBillingSchedule? @relation(fields: [billingScheduleId], references: [id])
+
+  @@unique([contractId, sequenceNo])
+  @@index([companyId, contractId, status])
+  @@index([billingScheduleId])
+  @@map("contract_payment_schedules")
+}
+
+model ContractAdjustmentImpact {
+  id                            String   @id @default(uuid()) @db.Uuid
+  companyId                     String   @map("company_id") @db.Uuid
+  adjustmentContractId          String   @unique @map("adjustment_contract_id") @db.Uuid
+  parentContractId              String   @map("parent_contract_id") @db.Uuid
+  valueAdjustment               Decimal  @default(0) @map("value_adjustment") @db.Decimal(20, 4)
+  effectiveDate                 DateTime @map("effective_date") @db.Date
+  billingReconciliationRequired Boolean  @default(true) @map("billing_reconciliation_required")
+  notes                         String?
+  createdAt                     DateTime @default(now()) @map("created_at")
+
+  company            Company  @relation(fields: [companyId], references: [id])
+  adjustmentContract Contract @relation("AdjustmentContract", fields: [adjustmentContractId], references: [id])
+  parentContract     Contract @relation("AdjustedParentContract", fields: [parentContractId], references: [id])
+
+  @@index([companyId, parentContractId])
+  @@map("contract_adjustment_impacts")
+}
+
+model Reconciliation {
+  id                  String                   @id @default(uuid()) @db.Uuid
+  companyId           String                   @map("company_id") @db.Uuid
+  reconCode           String                   @map("recon_code")
+  logicalGroupId      String                   @map("logical_group_id") @db.Uuid
+  revisionNo          Int                      @default(1) @map("revision_no")
+  isCurrent           Boolean                  @default(true) @map("is_current")
+  supersedesId        String?                  @map("supersedes_id") @db.Uuid
+  partnerId           String                   @map("partner_id") @db.Uuid
+  contractId          String                   @map("contract_id") @db.Uuid
+  periodType          PeriodType               @default(MONTHLY) @map("period_type")
+  periodStart         DateTime                 @map("period_start") @db.Date
+  periodEnd           DateTime                 @map("period_end") @db.Date
+  currency            String                   @db.VarChar(3)
+  sourceType          ReconciliationSourceType @map("source_type")
+  sourceAttachmentId  String?                  @map("source_attachment_id") @db.Uuid
+  sourceChecksum      String?                  @map("source_checksum")
+  sourceReportedTotal Decimal?                 @map("source_reported_total") @db.Decimal(20, 4)
+  ocrRawJson          Json?                    @map("ocr_raw_json")
+  ocrCorrectedJson    Json?                    @map("ocr_corrected_json")
+  ocrConfidence       Decimal?                 @map("ocr_confidence") @db.Decimal(9, 6)
+  validatedPayload    Json?                    @map("validated_payload")
+  approvedSnapshot    Json?                    @map("approved_snapshot")
+  totalGrossRevenue   Decimal                  @default(0) @map("total_gross_revenue") @db.Decimal(20, 4)
+  totalPartnerShare   Decimal                  @default(0) @map("total_partner_share") @db.Decimal(20, 4)
+  totalCompanyShare   Decimal                  @default(0) @map("total_company_share") @db.Decimal(20, 4)
+  totalWht            Decimal                  @default(0) @map("total_wht") @db.Decimal(20, 4)
+  totalNetRevenue     Decimal                  @default(0) @map("total_net_revenue") @db.Decimal(20, 4)
+  status              ReconciliationStatus     @default(DRAFT)
+  validatedById       String?                  @map("validated_by_id") @db.Uuid
+  validatedAt         DateTime?                @map("validated_at")
+  approvedById        String?                  @map("approved_by_id") @db.Uuid
+  approvedAt          DateTime?                @map("approved_at")
+  createdById         String?                  @map("created_by_id") @db.Uuid
+  createdAt           DateTime                 @default(now()) @map("created_at")
+  updatedAt           DateTime                 @updatedAt @map("updated_at")
+
+  company          Company              @relation(fields: [companyId], references: [id])
+  partner          Partner              @relation(fields: [partnerId], references: [id])
+  contract         Contract             @relation(fields: [contractId], references: [id])
+  sourceAttachment Attachment?          @relation(fields: [sourceAttachmentId], references: [id])
+  validatedBy      User?                @relation("ReconValidatedBy", fields: [validatedById], references: [id])
+  approvedBy       User?                @relation("ReconApprovedBy", fields: [approvedById], references: [id])
+  createdBy        User?                @relation("ReconCreatedBy", fields: [createdById], references: [id])
+  supersedes       Reconciliation?      @relation("ReconRevision", fields: [supersedesId], references: [id])
+  supersededBy     Reconciliation[]     @relation("ReconRevision")
+  items            ReconciliationItem[]
+  revenues         Revenue[]
+
+  @@unique([companyId, reconCode, revisionNo])
+  @@unique([logicalGroupId, revisionNo])
+  @@index([companyId, partnerId, periodStart, periodEnd])
+  @@index([companyId, status])
+  @@index([logicalGroupId, isCurrent])
+  @@index([sourceChecksum])
+  @@map("reconciliations")
+}
+
+model ReconciliationItem {
+  id                  String   @id @default(uuid()) @db.Uuid
+  companyId           String   @map("company_id") @db.Uuid
+  reconciliationId    String   @map("reconciliation_id") @db.Uuid
+  contractServiceId   String?  @map("contract_service_id") @db.Uuid
+  serviceId           String   @map("service_id") @db.Uuid
+  lineNo              Int      @map("line_no")
+  marketCode          String?  @map("market_code")
+  channelCode         String?  @map("channel_code")
+  scopeReference      String?  @map("scope_reference")
+  businessScopeKey    String   @map("business_scope_key")
+  periodStart         DateTime @map("period_start") @db.Date
+  periodEnd           DateTime @map("period_end") @db.Date
+  isCurrent           Boolean  @default(true) @map("is_current")
+  grossRevenue        Decimal  @map("gross_revenue") @db.Decimal(20, 4)
+  partnerShareRate    Decimal? @map("partner_share_rate") @db.Decimal(9, 6)
+  partnerShareAmount  Decimal  @default(0) @map("partner_share_amount") @db.Decimal(20, 4)
+  companyShareRate    Decimal? @map("company_share_rate") @db.Decimal(9, 6)
+  companyShareAmount  Decimal  @default(0) @map("company_share_amount") @db.Decimal(20, 4)
+  whtRate             Decimal? @map("wht_rate") @db.Decimal(9, 6)
+  whtAmount           Decimal  @default(0) @map("wht_amount") @db.Decimal(20, 4)
+  taxRate             Decimal? @map("tax_rate") @db.Decimal(9, 6)
+  taxAmount           Decimal  @default(0) @map("tax_amount") @db.Decimal(20, 4)
+  minimumGuaranteeAdj Decimal  @default(0) @map("minimum_guarantee_adj") @db.Decimal(20, 4)
+  netRevenue          Decimal  @map("net_revenue") @db.Decimal(20, 4)
+  sourceRowReference  String?  @map("source_row_reference")
+  validationJson      Json?    @map("validation_json")
+  calculationJson     Json?    @map("calculation_json")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  company                Company                 @relation(fields: [companyId], references: [id])
+  reconciliation         Reconciliation          @relation(fields: [reconciliationId], references: [id], onDelete: Cascade)
+  contractService        ContractService?        @relation(fields: [contractServiceId], references: [id])
+  service                Service                 @relation(fields: [serviceId], references: [id])
+  commercialTermSnapshot CommercialTermSnapshot?
+  revenues               Revenue[]
+
+  @@unique([reconciliationId, lineNo])
+  @@index([companyId, businessScopeKey])
+  @@index([reconciliationId, serviceId])
+  @@map("reconciliation_items")
+}
+
+model CommercialTermSnapshot {
+  id                     String           @id @default(uuid()) @db.Uuid
+  companyId              String           @map("company_id") @db.Uuid
+  reconciliationItemId   String           @unique @map("reconciliation_item_id") @db.Uuid
+  contractId             String           @map("contract_id") @db.Uuid
+  contractServiceId      String?          @map("contract_service_id") @db.Uuid
+  serviceId              String           @map("service_id") @db.Uuid
+  effectiveDate          DateTime         @map("effective_date") @db.Date
+  currency               String           @db.VarChar(3)
+  businessModel          BusinessModel    @map("business_model")
+  partnerShareRate       Decimal?         @map("partner_share_rate") @db.Decimal(9, 6)
+  companyShareRate       Decimal?         @map("company_share_rate") @db.Decimal(9, 6)
+  fixedFee               Decimal?         @map("fixed_fee") @db.Decimal(20, 4)
+  minimumGuaranteeAmount Decimal?         @map("minimum_guarantee_amount") @db.Decimal(20, 4)
+  minimumGuaranteePeriod GuaranteePeriod? @map("minimum_guarantee_period")
+  whtRate                Decimal?         @map("wht_rate") @db.Decimal(9, 6)
+  taxRate                Decimal?         @map("tax_rate") @db.Decimal(9, 6)
+  termsJson              Json?            @map("terms_json")
+  createdAt              DateTime         @default(now()) @map("created_at")
+
+  company            Company            @relation(fields: [companyId], references: [id])
+  reconciliationItem ReconciliationItem @relation(fields: [reconciliationItemId], references: [id], onDelete: Cascade)
+  contract           Contract           @relation(fields: [contractId], references: [id])
+  contractService    ContractService?   @relation(fields: [contractServiceId], references: [id])
+  service            Service            @relation(fields: [serviceId], references: [id])
+
+  @@index([companyId, contractId])
+  @@map("commercial_term_snapshots")
+}
+
+model Revenue {
+  id                   String        @id @default(uuid()) @db.Uuid
+  companyId            String        @map("company_id") @db.Uuid
+  revenueCode          String        @map("revenue_code")
+  logicalGroupId       String        @map("logical_group_id") @db.Uuid
+  revisionNo           Int           @default(1) @map("revision_no")
+  isCurrent            Boolean       @default(true) @map("is_current")
+  supersedesId         String?       @map("supersedes_id") @db.Uuid
+  reconciliationId     String        @map("reconciliation_id") @db.Uuid
+  reconciliationItemId String        @map("reconciliation_item_id") @db.Uuid
+  partnerId            String        @map("partner_id") @db.Uuid
+  contractId           String        @map("contract_id") @db.Uuid
+  serviceId            String        @map("service_id") @db.Uuid
+  businessScopeKey     String        @map("business_scope_key")
+  periodType           PeriodType    @default(MONTHLY) @map("period_type")
+  periodStart          DateTime      @map("period_start") @db.Date
+  periodEnd            DateTime      @map("period_end") @db.Date
+  currency             String        @db.VarChar(3)
+  grossAmount          Decimal       @map("gross_amount") @db.Decimal(20, 4)
+  partnerShareAmount   Decimal       @map("partner_share_amount") @db.Decimal(20, 4)
+  companyShareAmount   Decimal       @map("company_share_amount") @db.Decimal(20, 4)
+  whtAmount            Decimal       @default(0) @map("wht_amount") @db.Decimal(20, 4)
+  taxAmount            Decimal       @default(0) @map("tax_amount") @db.Decimal(20, 4)
+  adjustmentAmount     Decimal       @default(0) @map("adjustment_amount") @db.Decimal(20, 4)
+  netAmount            Decimal       @map("net_amount") @db.Decimal(20, 4)
+  calculationJson      Json?         @map("calculation_json")
+  status               RevenueStatus @default(GENERATED)
+  createdAt            DateTime      @default(now()) @map("created_at")
+  updatedAt            DateTime      @updatedAt @map("updated_at")
+
+  company            Company            @relation(fields: [companyId], references: [id])
+  reconciliation     Reconciliation     @relation(fields: [reconciliationId], references: [id])
+  reconciliationItem ReconciliationItem @relation(fields: [reconciliationItemId], references: [id])
+  partner            Partner            @relation(fields: [partnerId], references: [id])
+  contract           Contract           @relation(fields: [contractId], references: [id])
+  service            Service            @relation(fields: [serviceId], references: [id])
+  supersedes         Revenue?           @relation("RevenueRevision", fields: [supersedesId], references: [id])
+  supersededBy       Revenue[]          @relation("RevenueRevision")
+  invoiceScopeItems  InvoiceScopeItem[]
+
+  @@unique([companyId, revenueCode, revisionNo])
+  @@unique([logicalGroupId, revisionNo])
+  @@index([companyId, businessScopeKey, periodStart, periodEnd])
+  @@index([companyId, status])
+  @@index([reconciliationItemId])
+  @@map("revenues")
+}
+
+model InvoiceScope {
+  id             String             @id @default(uuid()) @db.Uuid
+  companyId      String             @map("company_id") @db.Uuid
+  scopeCode      String             @map("scope_code")
+  logicalGroupId String             @map("logical_group_id") @db.Uuid
+  revisionNo     Int                @default(1) @map("revision_no")
+  isCurrent      Boolean            @default(true) @map("is_current")
+  supersedesId   String?            @map("supersedes_id") @db.Uuid
+  partnerId      String             @map("partner_id") @db.Uuid
+  contractId     String             @map("contract_id") @db.Uuid
+  periodType     PeriodType         @default(MONTHLY) @map("period_type")
+  periodStart    DateTime           @map("period_start") @db.Date
+  periodEnd      DateTime           @map("period_end") @db.Date
+  invoiceMode    InvoiceMode        @map("invoice_mode")
+  scopeKey       String             @map("scope_key")
+  currency       String             @db.VarChar(3)
+  totalAmount    Decimal            @default(0) @map("total_amount") @db.Decimal(20, 4)
+  status         InvoiceScopeStatus @default(BUILDING)
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  company      Company            @relation(fields: [companyId], references: [id])
+  partner      Partner            @relation(fields: [partnerId], references: [id])
+  contract     Contract           @relation(fields: [contractId], references: [id])
+  supersedes   InvoiceScope?      @relation("InvoiceScopeRevision", fields: [supersedesId], references: [id])
+  supersededBy InvoiceScope[]     @relation("InvoiceScopeRevision")
+  items        InvoiceScopeItem[]
+
+  @@unique([companyId, scopeCode, revisionNo])
+  @@unique([logicalGroupId, revisionNo])
+  @@index([companyId, partnerId, periodStart, periodEnd])
+  @@index([companyId, status])
+  @@index([scopeKey, isCurrent])
+  @@map("invoice_scopes")
+}
+
+model InvoiceScopeItem {
+  id        String   @id @default(uuid()) @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  scopeId   String   @map("scope_id") @db.Uuid
+  revenueId String   @map("revenue_id") @db.Uuid
+  lineNo    Int      @map("line_no")
+  amount    Decimal  @db.Decimal(20, 4)
+  isCurrent Boolean  @default(true) @map("is_current")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  company Company      @relation(fields: [companyId], references: [id])
+  scope   InvoiceScope @relation(fields: [scopeId], references: [id], onDelete: Cascade)
+  revenue Revenue      @relation(fields: [revenueId], references: [id])
+
+  @@unique([scopeId, revenueId])
+  @@unique([scopeId, lineNo])
+  @@index([companyId, revenueId])
+  @@map("invoice_scope_items")
+}

@@ -1,0 +1,16 @@
+{
+  "name": "erp-core-web",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.18.3",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "db:generate": "pnpm --filter @erp/db db:generate",
+    "db:migrate": "pnpm --filter @erp/db db:migrate",
+    "db:migrate:deploy": "pnpm --filter @erp/db db:migrate:deploy",
+    "db:seed": "pnpm --filter @erp/db db:seed"
+  }
+}
