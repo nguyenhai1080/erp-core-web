@@ -37,7 +37,7 @@ if ($Target -in @('web', 'all')) {
     } finally { Pop-Location }
     $taskWeb = Join-Path $taskOutput 'web'
     New-Item -ItemType Directory -Path $taskWeb | Out-Null
-    Copy-Item -LiteralPath "$taskRoot/deploy/web/package.json", "$taskRoot/deploy/web/package-lock.json", "$taskRoot/deploy/web/server.mjs" -Destination $taskWeb
+    Copy-Item -LiteralPath "$taskRoot/deploy/web/package.json", "$taskRoot/deploy/web/package-lock.json", "$taskRoot/apps/web/server.mjs" -Destination $taskWeb
     Copy-Item -LiteralPath "$taskRoot/apps/web/dist" -Destination "$taskWeb/public" -Recurse
     Push-Location $taskWeb
     try {
