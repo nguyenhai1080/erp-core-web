@@ -1,6 +1,6 @@
 # ERP Core Web
 
-Technical Build Pack **v0.6.4** for the ERP Core Web rebuild targeting Vibehost + PostgreSQL 16.
+Technical Build Pack **v0.6.5** for the ERP Core Web rebuild targeting Vibehost + PostgreSQL 16.
 
 ## Staging deployment bundles
 
@@ -24,6 +24,17 @@ initial staging seed, then remove it after logs show `Seed verified`. Seed uses
 upserts and preserves existing company fields. It creates the company, permissions,
 ADMIN role and sequences; it does not create a login user. The previously printed
 random bootstrap token was never stored or used for authentication and is removed.
+
+The root `Dockerfile` builds the API from the complete pnpm workspace. For GitHub
+deployment, select `develop`, leave the subdirectory empty, and use this Dockerfile.
+The UI remains a separate deployment. Runtime credentials must be supplied by the
+host; `.dockerignore` excludes local secrets and upload archives.
+
+For staging persistence acceptance, declare `/app/storage` as a persistent directory
+in Vibehost, set `STORAGE_ROOT=/app/storage` and `ERP_STORAGE_PROBE=true`, then deploy
+twice. The first startup logs `Storage probe: created`; the second must log
+`preserved` with exactly the same ID and creation time. Set the probe flag to
+`false` after acceptance. It exposes no HTTP endpoint and writes only a test marker.
 
 Before seeding, take a data backup of the database attached to the API. Keep a
 daily backup schedule and verify a download/restore independently before production.

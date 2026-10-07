@@ -10,7 +10,7 @@ New-Item -ItemType Directory -Path $taskOutput -ErrorAction Stop | Out-Null
 if ($Target -in @('api', 'all')) {
     $taskApi = Join-Path $taskOutput 'api'
     New-Item -ItemType Directory -Path "$taskApi/packages/db" | Out-Null
-    Copy-Item -LiteralPath "$taskRoot/deploy/api/package.json", "$taskRoot/deploy/api/package-lock.json", "$taskRoot/deploy/api/start.mjs", "$taskRoot/tsconfig.base.json" -Destination $taskApi
+    Copy-Item -LiteralPath "$taskRoot/deploy/api/package.json", "$taskRoot/deploy/api/package-lock.json", "$taskRoot/deploy/api/start.mjs", "$taskRoot/deploy/api/storage-probe.mjs", "$taskRoot/tsconfig.base.json" -Destination $taskApi
     Copy-Item -LiteralPath "$taskRoot/apps/api/src" -Destination $taskApi -Recurse
     Copy-Item -LiteralPath "$taskRoot/packages/db/src", "$taskRoot/packages/db/prisma", "$taskRoot/packages/db/package.json", "$taskRoot/packages/db/tsconfig.json" -Destination "$taskApi/packages/db" -Recurse
     $taskTs = Get-Content "$taskRoot/apps/api/tsconfig.json" -Raw | ConvertFrom-Json
@@ -22,7 +22,7 @@ if ($Target -in @('api', 'all')) {
     Push-Location $taskApi
     try {
         # Create the upload archive before installation so it contains source only.
-        Compress-Archive -Path package.json,package-lock.json,start.mjs,tsconfig.json,tsconfig.base.json,src,packages -DestinationPath "$taskOutput/erp-core-api-staging-upload.zip"
+        Compress-Archive -Path package.json,package-lock.json,start.mjs,storage-probe.mjs,tsconfig.json,tsconfig.base.json,src,packages -DestinationPath "$taskOutput/erp-core-api-staging-upload.zip"
         & npm.cmd ci --ignore-scripts --no-audit --no-fund
         if ($LASTEXITCODE -ne 0) { throw 'API dependency installation failed' }
         & npm.cmd run build
