@@ -46,7 +46,7 @@ setup token and password; neither belongs in Git.
 2. Save and redeploy the API. Open `https://erp-core-staging-ui.n1.tinhgon.xyz/#setup`.
 3. Enter DEFAULT, your name/email, password (15–128 characters), confirmation and
    setup token. Create the administrator, then log in.
-4. Set AUTH_BOOTSTRAP_ENABLED=false, remove AUTH_BOOTSTRAP_TOKEN and redeploy.
+4. Set AUTH_BOOTSTRAP_ENABLED=false, restore AUTH_BOOTSTRAP_TOKEN=disabled and redeploy.
    Further provisioning is rejected as soon as the company has a user.
 
 Generate a token privately in Windows PowerShell if needed:
