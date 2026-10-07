@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
 const sections = ['Dashboard','Partners','Services','Contracts','Projects','Quotations','Reconciliation','Revenue','Invoices','AR','AP','Payments','Reports','System'];
+document.title = 'ERP Core Web · v0.6.5';
 function App() {
   const [health, setHealth] = useState<'checking' | 'connected' | 'error'>('checking');
   useEffect(() => {
