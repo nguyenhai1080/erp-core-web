@@ -129,6 +129,14 @@ Provisioning is closed when a company already has a user; do not recreate that u
 For older DEFAULT backups, pass `-ExpectedCompany DEFAULT` to the restore verifier;
 for the renamed database use `-ExpectedCompany GST -MinimumMigrations 4`.
 
+Rollout status: the GST change is tested and committed locally, but GitHub rejected
+both Git push and Git Data API writes with HTTP 500 on 2026-10-07. It has not been
+deployed to staging. Staging DEFAULT_COMPANY_CODE was restored to DEFAULT until
+the new migration can be deployed. The pre-change backup contains the owner's
+existing ADMIN account; do not try to bootstrap another account.
+After publishing the change, set staging DEFAULT_COMPANY_CODE=GST, deploy the API
+(which applies the rename), then deploy the UI and verify a new backup restore.
+
 ## Remaining before business UAT
 
 - Human provisioning and actual staging login.
