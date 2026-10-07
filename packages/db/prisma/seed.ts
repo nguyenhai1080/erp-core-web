@@ -1,5 +1,4 @@
 import { PrismaClient } from '@prisma/client';
-import crypto from 'node:crypto';
 const prisma = new PrismaClient();
 const permissions = [
   'SYSTEM_VIEW','SYSTEM_CONFIG_EDIT','USER_VIEW','USER_CREATE','USER_EDIT','USER_DISABLE','ROLE_VIEW','ROLE_CREATE','ROLE_EDIT',
@@ -52,6 +51,8 @@ async function main() {
       create: { companyId: company.id, sequenceName: seq[0], prefix: seq[1], padding: seq[2] }
     });
   }
-  console.log(`Seeded company ${company.companyCode}; bootstrap token ${crypto.randomBytes(4).toString('hex')}`);
+  const permissionCount = await prisma.permission.count({ where: { code: { in: permissions } } });
+  const sequenceCount = await prisma.sequence.count({ where: { companyId: company.id } });
+  console.log(`Seed verified: company ${company.companyCode}; ${permissionCount} baseline permissions; ${sequenceCount} sequences; ADMIN role ${adminRole.code}`);
 }
-main().finally(async () => prisma.$disconnect());
+main().catch((error) => { console.error(error); process.exitCode = 1; }).finally(async () => prisma.$disconnect());

@@ -1,6 +1,32 @@
 # ERP Core Web
 
-Technical Build Pack **v0.6.1** for the ERP Core Web rebuild targeting Vibehost + PostgreSQL 16.
+Technical Build Pack **v0.6.4** for the ERP Core Web rebuild targeting Vibehost + PostgreSQL 16.
+
+## Staging deployment bundles
+
+API root `/` and `/api/v1/health` check the database. The web shell checks health
+through its server, with `API_BASE_URL` pointing to the deployed API. Business
+menus are placeholders.
+
+Build upload bundles from this repository on Windows:
+
+```powershell
+./scripts/package-staging.ps1 -Target all
+```
+
+The output is under ignored `artifacts/staging/`. API bundles include the local DB
+package, npm lockfile and Prisma migration source, so Vibehost can build from one
+directory without losing pnpm workspace dependencies. Deploy these archives to
+the existing API/Web projects; do not create extra database instances.
+
+API startup applies existing migrations. Set `ERP_SEED_ON_START=true` for the
+initial staging seed, then remove it after logs show `Seed verified`. Seed uses
+upserts and preserves existing company fields. It creates the company, permissions,
+ADMIN role and sequences; it does not create a login user. The previously printed
+random bootstrap token was never stored or used for authentication and is removed.
+
+Before seeding, take a data backup of the database attached to the API. Keep a
+daily backup schedule and verify a download/restore independently before production.
 
 ## v0.6.1 API workspace entrypoint fix
 

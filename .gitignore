@@ -12,3 +12,5 @@ storage/*
 .idea/
 
 *.tsbuildinfo
+artifacts/
+Host_DB.txt
