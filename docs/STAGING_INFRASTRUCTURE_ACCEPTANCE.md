@@ -28,12 +28,19 @@ UI: https://erp-core-staging-ui.n1.tinhgon.xyz
   proxy and static page passed locally. UI source configured as `apps/web` on
   `develop`, using the same repository. No database is attached to the UI.
 
-## Pending remote checks
+## GitHub auto-deploy acceptance
 
-- A push to `develop` triggers deployment without pressing Redeploy; verify the
-  commit hash in deployment history and the resulting health response.
-- UI GitHub deployment and auto-deploy path remain to be verified remotely.
+- API v5 automatically deployed commit `e1a8e55e` after a push to `develop`,
+  using the root Dockerfile. Health gate and public route both passed HTTP 200.
+- UI v3 automatically deployed commit `1184aa15`, with subdirectory `apps/web`
+  and its standalone Dockerfile. Health gate and public route passed HTTP 200.
+- Both auto-deploy switches remain enabled. No Redeploy button was pressed for
+  these webhook-triggered versions. A later API version is also processing the
+  `1184aa15` release-identification change; that only adds a startup log.
+- `ERP_SEED_ON_START=false` and `ERP_STORAGE_PROBE=false` are saved for future
+  deployments. `/app/storage` remains mounted; the marker is retained as evidence.
+- UI `API_BASE_URL` explicitly points to the deployed API for future deployments.
 
-Phase 4 remains open until these checks pass. Phase 5 starts with 0006 Project
+Phase 4 acceptance passed. Phase 5 starts with 0006 Project
 Execution + Cost; production remains gated by the roadmap's financial, RBAC,
 storage, restore and UAT requirements.

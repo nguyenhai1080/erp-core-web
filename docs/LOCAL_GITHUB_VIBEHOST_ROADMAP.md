@@ -3,10 +3,12 @@
 ## Current gate
 
 2026-10-07: Local Integration, GitHub baseline, staging API health, migration and
-seed have passed. Phase 4 is active. Backup download and isolated local restore
+seed have passed. Phase 4 acceptance has passed. Backup download and isolated local restore
 passed (DEFAULT, 80 permissions, 14 sequences, ADMIN with 80 permissions, one
-applied migration). Persistent storage and GitHub auto-deploy require their
-remote acceptance results before Phase 5. See `STAGING_INFRASTRUCTURE_ACCEPTANCE.md`.
+applied migration). Storage marker survived Vibehost redeployment. Pushes to
+`develop` automatically deployed both API and UI and passed health. Phase 5 is
+next, beginning with 0006 Project Execution + Cost. See
+`STAGING_INFRASTRUCTURE_ACCEPTANCE.md`.
 
 Schema packs implemented in source:
 
