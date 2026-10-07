@@ -1,12 +1,13 @@
 # ERP Core Web
 
-Technical Build Pack **v0.6.6** for the ERP Core Web rebuild targeting Vibehost + PostgreSQL 16.
+Technical Build Pack **v0.6.7** for the ERP Core Web rebuild targeting Vibehost + PostgreSQL 16.
 
 ## Staging deployment bundles
 
-API root `/` and `/api/v1/health` check the database. The web shell checks health
-through its server, with `API_BASE_URL` pointing to the deployed API. Business
-menus are placeholders.
+API root `/` and `/api/v1/health` check the database. The web UI proxies authenticated
+requests to `API_BASE_URL`. Login and company-scoped project reads are implemented;
+execution/cost write workflows remain pending. See [authentication setup](docs/AUTH_ACCESS.md).
+API `APP_URL` must identify the UI origin for login/CSRF checks.
 
 Build upload bundles from this repository on Windows:
 

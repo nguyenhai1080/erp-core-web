@@ -14,9 +14,9 @@ const contentTypes = {
   '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json; charset=utf-8'
 };
 const server = createServer(async (request, response) => {
-  if (!['GET', 'HEAD'].includes(request.method)) {
-    response.writeHead(405, { Allow: 'GET, HEAD' }); response.end(); return;
-  }
+  response.setHeader('Referrer-Policy', 'same-origin');
+  response.setHeader('X-Content-Type-Options', 'nosniff');
+  response.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
   let pathname;
   try { pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname); }
   catch { response.writeHead(400); response.end(); return; }
@@ -37,7 +37,44 @@ const server = createServer(async (request, response) => {
     }
     return;
   }
+  if (pathname.startsWith('/api/v1/')) {
+    if (!['GET', 'HEAD', 'POST'].includes(request.method)) {
+      response.writeHead(405, { Allow: 'GET, HEAD, POST' }); response.end(); return;
+    }
+    try {
+      const chunks = []; let size = 0;
+      for await (const chunk of request) {
+        size += chunk.length;
+        if (size > 32768) { response.writeHead(413); response.end(); return; }
+        chunks.push(chunk);
+      }
+      const headers = { Accept: 'application/json' };
+      for (const name of ['content-type', 'cookie', 'origin', 'x-csrf-token']) {
+        if (typeof request.headers[name] === 'string') headers[name] = request.headers[name];
+      }
+      const target = new URL(request.url, apiBase);
+      if (target.origin !== apiBase.origin) throw new Error('Invalid upstream origin');
+      const upstream = await fetch(target, {
+        method: request.method, headers,
+        body: request.method === 'POST' ? Buffer.concat(chunks) : undefined,
+        redirect: 'manual', signal: AbortSignal.timeout(15000)
+      });
+      const outputHeaders = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };
+      const cookies = upstream.headers.getSetCookie();
+      if (cookies.length) outputHeaders['Set-Cookie'] = cookies;
+      const outputBody = request.method === 'HEAD' ? undefined : Buffer.from(await upstream.arrayBuffer());
+      response.writeHead(upstream.status, outputHeaders);
+      response.end(outputBody);
+    } catch {
+      response.writeHead(502, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+      response.end(JSON.stringify({ message: 'Không kết nối được dịch vụ. Vui lòng thử lại.' }));
+    }
+    return;
+  }
   if (pathname.startsWith('/api/')) { response.writeHead(404); response.end(); return; }
+  if (!['GET', 'HEAD'].includes(request.method)) {
+    response.writeHead(405, { Allow: 'GET, HEAD' }); response.end(); return;
+  }
   const root = resolve(publicDirectory);
   let filename = resolve(root, '.' + pathname);
   if (filename !== root && !filename.startsWith(root + sep)) { response.writeHead(403); response.end(); return; }

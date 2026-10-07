@@ -25,6 +25,11 @@ database passed; 20 invalid writes were rejected; repeated migration/seed and
 the workspace build passed. New seed baseline: 92 permissions, 16 sequences.
 See `schema/0006-project-execution-cost.md` for scope and remaining runtime work.
 
+v0.6.7 adds authentication, persisted sessions, runtime role/company checks and
+the authenticated project read screen. Local integration tests passed 52 checks.
+See `AUTH_ACCESS.md` for first-admin provisioning and validation. Milestone/cost
+commands, write screens and business UAT remain the next 0006 work.
+
 **Do not continue to 0006 until the Local Integration Gate passes.**
 
 ## Phase 1 - Local Integration Gate (Windows)
