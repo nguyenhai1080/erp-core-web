@@ -16,12 +16,16 @@ const permissions = [
   'PAYMENT_ALLOCATE','REPORT_VIEW','AUDIT_VIEW'
 ];
 async function main() {
+  const companyCode = process.env.DEFAULT_COMPANY_CODE ?? 'GST';
+  if (companyCode === 'DEFAULT') {
+    throw new Error('Company code has changed to GST; update DEFAULT_COMPANY_CODE before seeding.');
+  }
   const company = await prisma.company.upsert({
-    where: { companyCode: process.env.DEFAULT_COMPANY_CODE ?? 'DEFAULT' },
+    where: { companyCode },
     update: {},
     create: {
-      companyCode: process.env.DEFAULT_COMPANY_CODE ?? 'DEFAULT',
-      companyName: 'Default Company',
+      companyCode,
+      companyName: 'CÔNG TY CỔ PHẦN CÔNG NGHỆ GST VIỆT NAM',
       defaultCurrency: 'USD',
       timezone: 'Asia/Ho_Chi_Minh'
     }

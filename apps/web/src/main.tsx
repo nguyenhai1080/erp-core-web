@@ -78,7 +78,7 @@ function App() {
     <h1>{setup ? 'Thiết lập quản trị' : 'Đăng nhập'}</h1>
     {setup && <p>Chỉ dùng cho tài khoản quản trị đầu tiên, khi bạn đã được cấp mã thiết lập.</p>}
     <form method="post" onSubmit={submit}><fieldset disabled={busy}>
-      <label>Mã công ty<input name="companyCode" defaultValue="DEFAULT" required maxLength={50} autoComplete="organization" /></label>
+      <label>Mã công ty<input name="companyCode" defaultValue="GST" required maxLength={50} autoComplete="organization" /></label>
       {setup && <label>Họ và tên<input name="fullName" required maxLength={120} autoComplete="name" /></label>}
       <label>Email<input name="email" type="email" required maxLength={254} autoComplete="username" /></label>
       <label>Mật khẩu<input name="password" type="password" required minLength={setup ? 15 : 1} maxLength={128} autoComplete={setup ? 'new-password' : 'current-password'} /></label>

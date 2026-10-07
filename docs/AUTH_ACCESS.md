@@ -40,11 +40,12 @@ setup token and password; neither belongs in Git.
 
 1. API `erp-core-web-staging` → Configuration → Environment variables:
    - APP_URL = `https://erp-core-staging-ui.n1.tinhgon.xyz`
+   - DEFAULT_COMPANY_CODE = `GST`
    - AUTH_BOOTSTRAP_ENABLED = `true`
    - AUTH_BOOTSTRAP_TOKEN = a private random 64-character token
    - SESSION_SECRET = retain the existing strong value (at least 32 characters).
 2. Save and redeploy the API. Open `https://erp-core-staging-ui.n1.tinhgon.xyz/#setup`.
-3. Enter DEFAULT, your name/email, password (15–128 characters), confirmation and
+3. Enter GST, your name/email, password (15–128 characters), confirmation and
    setup token. Create the administrator, then log in.
 4. Set AUTH_BOOTSTRAP_ENABLED=false, restore AUTH_BOOTSTRAP_TOKEN=disabled and redeploy.
    Further provisioning is rejected as soon as the company has a user.
@@ -106,6 +107,27 @@ Root API Docker build and standalone ZIP bundle build passed.
   backup restore and this release's isolated auth tests cover migration integrity;
   a post-auth staging backup restore has not yet been performed.
 - Screenshot: `artifacts/auth/staging-v067-login.png` (local, ignored).
+
+## GST company identity — 2026-10-07
+
+The owner requested company code `GST` and legal name
+`CÔNG TY CỔ PHẦN CÔNG NGHỆ GST VIỆT NAM`.
+Migration `20261007173000_gst_company_identity` renames DEFAULT in place, preserving
+its UUID and all user/role/business relations. It fails rather than merging tenants
+if DEFAULT and GST both exist. An empty database is populated as GST by the seed.
+Seed rejects a stale DEFAULT setting to prevent recreating the former company.
+API fallback, example/local configuration and the web form now use GST.
+
+A pre-change staging backup (217 KB) restored successfully with three migrations,
+92 permissions, 16 sequences and one existing user. Applying the rename to that
+restore kept the same company UUID, one company, one ADMIN role, 92 role permissions
+and 16 sequences. Two consecutive seeds did not recreate DEFAULT. API/web builds
+and all 52 auth checks passed with the new migration in the isolated acceptance DB.
+
+Existing accounts must log in with company code GST and their existing credentials.
+Provisioning is closed when a company already has a user; do not recreate that user.
+For older DEFAULT backups, pass `-ExpectedCompany DEFAULT` to the restore verifier;
+for the renamed database use `-ExpectedCompany GST -MinimumMigrations 4`.
 
 ## Remaining before business UAT
 
