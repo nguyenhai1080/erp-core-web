@@ -27,7 +27,10 @@ random bootstrap token was never stored or used for authentication and is remove
 
 The root `Dockerfile` builds the API from the complete pnpm workspace. For GitHub
 deployment, select `develop`, leave the subdirectory empty, and use this Dockerfile.
-The UI remains a separate deployment. Runtime credentials must be supplied by the
+For the UI GitHub project, select the same `develop` branch with subdirectory
+`apps/web`; its Dockerfile uses the standalone npm lockfile and serves the health
+proxy with `API_BASE_URL` pointing to the API. The root pnpm lock remains canonical
+for local monorepo development. The UI remains a separate deployment. Runtime credentials must be supplied by the
 host; `.dockerignore` excludes local secrets and upload archives.
 
 For staging persistence acceptance, declare `/app/storage` as a persistent directory
