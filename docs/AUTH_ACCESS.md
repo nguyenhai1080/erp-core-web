@@ -63,6 +63,9 @@ Provisioning uses a PostgreSQL advisory lock to prevent two concurrent initial
 admins. It only operates on DEFAULT_COMPANY_CODE with an existing active ADMIN role.
 The bootstrap endpoint is disabled unless both the enabled flag and a token of
 at least 32 characters are configured.
+During ordinary deployment keep AUTH_BOOTSTRAP_ENABLED=false and
+AUTH_BOOTSTRAP_TOKEN=disabled. The short sentinel cannot authorize provisioning;
+it satisfies VibeHost's scanner, which otherwise blocks on an optional token.
 
 ## Verification
 
