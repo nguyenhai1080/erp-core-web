@@ -129,17 +129,22 @@ Provisioning is closed when a company already has a user; do not recreate that u
 For older DEFAULT backups, pass `-ExpectedCompany DEFAULT` to the restore verifier;
 for the renamed database use `-ExpectedCompany GST -MinimumMigrations 4`.
 
-Rollout status: the GST change is tested and committed locally, but GitHub rejected
-both Git push and Git Data API writes with HTTP 500 on 2026-10-07. It has not been
-deployed to staging. Staging DEFAULT_COMPANY_CODE was restored to DEFAULT until
-the new migration can be deployed. The pre-change backup contains the owner's
-existing ADMIN account; do not try to bootstrap another account.
-After publishing the change, set staging DEFAULT_COMPANY_CODE=GST, deploy the API
-(which applies the rename), then deploy the UI and verify a new backup restore.
+Rollout completed on 2026-10-08 after GitHub accepted the previously blocked push.
+Staging DEFAULT_COMPANY_CODE=GST is saved. API v14 runs the four migrations and
+UI v7 displays GST with a healthy service status. The existing ADMIN account
+remains in place; log in with GST and existing credentials, without provisioning
+another user.
+
+The successful post-change staging backup (217 KB) restored into isolated local
+database `erp_restore_acceptance_gst_after`: GST with the approved legal name,
+the same company UUID `4bf771b7-7243-4e32-b1ef-30d7465af418`, one existing owner
+account/ADMIN assignment, 92 permissions, 16 sequences and four migrations.
+Local `erp_core` migration/seed and local environment configuration also use GST.
+Screenshot: `artifacts/auth/staging-gst-login.png` (local, ignored).
 
 ## Remaining before business UAT
 
-- Human provisioning and actual staging login.
+- Owner verification of actual staging login with GST and existing credentials.
 - User/role administration and password reset workflows.
 - Project milestone/budget/cost commands with permissions, audit attribution,
   transaction rules and write screens; every mutation needs Origin/CSRF checks.
