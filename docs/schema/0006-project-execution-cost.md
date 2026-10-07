@@ -1,6 +1,7 @@
 # 0006 — Project Execution + Cost
 
-Status: data foundation implemented; authenticated commands and business UI pending.
+Status: data foundation and initial authenticated commands/UI implemented in v0.6.8.
+See `../EXECUTION_COMMANDS.md` for the usable workflow and remaining scope.
 This follows the schema-pack approach of 0002–0005. It does not introduce public
 financial write endpoints or claim that user acceptance testing is complete.
 
@@ -42,7 +43,7 @@ files are separate historical references; this change does not retroactively app
 Seed adds 12 milestone/cost/budget permission codes and two sequences:
 `PROJECT_COST` and `PROJECT_MILESTONE`. Fresh DEFAULT baseline is 92 permissions
 and 16 sequences. Repeated seed preserves existing sequence counters and records.
-Permission definitions do not constitute runtime RBAC enforcement.
+The v0.6.8 commands enforce relevant permissions at runtime.
 
 ## Runtime work still required before business UAT
 

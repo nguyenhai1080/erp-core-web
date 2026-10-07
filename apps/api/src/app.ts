@@ -23,6 +23,6 @@ export async function buildApp(options: { auth?: AuthConfig; logger?: boolean } 
   await app.register(cookie);
   await app.register(healthRoutes);
   await app.register(authRoutes, auth);
-  await app.register(projectRoutes);
+  await app.register(projectRoutes, auth);
   return app;
 }

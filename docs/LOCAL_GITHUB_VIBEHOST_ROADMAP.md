@@ -34,6 +34,12 @@ The owner should verify login with GST and existing credentials before business
 UAT. See `AUTH_ACCESS.md` for access validation. Milestone/cost
 commands, write screens and business UAT remain the next 0006 work.
 
+v0.6.8 implements the initial execution workspace: partner/project creation,
+budget revisions, milestone progress/submission, draft cost/approval/cancellation
+and exact per-currency totals. 51 command checks and 52 auth checks passed.
+Formal acceptance, contract/evidence workflows and GST business UAT remain.
+See `EXECUTION_COMMANDS.md`.
+
 **Do not continue to 0006 until the Local Integration Gate passes.**
 
 ## Phase 1 - Local Integration Gate (Windows)
