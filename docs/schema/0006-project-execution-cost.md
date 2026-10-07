@@ -71,5 +71,27 @@ docker exec erp-core-postgres psql -U erp -d erp_0006_acceptance -f /tmp/0006_ex
 
 The SQL test rolls back all fixtures. It checks 20 invalid writes plus successful
 acceptance, budget revision, cancellation, exact Decimal values and deletion of a draft.
-The v0.6.5 backup verifier retains its historical 80/14 baseline assertions;
-it is for the pre-0006 backup, not a newly seeded 0006 backup.
+The backup verifier defaults to the historical v0.6.5 baseline (80/14).
+For a newly seeded 0006 backup, pass `-ExpectedPermissions 92 -ExpectedSequences 16
+-MinimumMigrations 2` to `scripts/verify-staging-backup.ps1`.
+
+## Staging verification — 2026-10-07
+
+- Source commit `3d6f4d1`: API deployment v7 passed the public health gate;
+  startup logs identify release 0.6.6 and seed 92 permissions / 16 sequences.
+- UI deployment v5 serves v0.6.6 with API/database connected. This update required
+  a manual redeploy: the UI automatic-deploy switch was enabled but this push
+  did not produce a UI deployment. Automatic UI delivery needs another check.
+- Pre-migration backup (194 KB) was downloaded and restored before upgrade testing.
+- Post-migration backup (214 KB) was downloaded to
+  `C:\Users\Andy\Downloads\erp-core-web-staging-postgresql-20261007-2228.dump`.
+  SHA256: `19B966742EAE3BD66D1119C56BAD8ECC0EED017400D16903B96E43A3E9D27EBC`.
+- That backup restored into isolated local `erp_restore_acceptance_0006_staging`:
+  DEFAULT, 92 permissions, 16 sequences, ADMIN with 92 permissions, 2 migrations.
+  The 0006 SQL tests passed against the restored staging database; all fixtures
+  rolled back. No business data was inserted into live staging for the tests.
+- `ERP_SEED_ON_START=false` was saved after verification and takes effect on the
+  next API deployment. Existing managed DB was reused; no extra staging DB created.
+
+Business UAT is still pending. This is a verified schema release, not a completed
+project execution workflow.
