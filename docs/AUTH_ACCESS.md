@@ -89,13 +89,31 @@ The earlier 44-check version passed in Node 22 Docker with a 512 MB limit.
 Local browser login → projects → reload → logout passed through the actual proxy.
 Root API Docker build and standalone ZIP bundle build passed.
 
+## Staging verification — 2026-10-07
+
+- API deployment v10 is live from source `6a19ff23`; runtime reports release
+  `0.6.7`, three migrations and no pending migrations. The existing managed
+  database `erp_core_web_staging_db` is reused.
+- UI deployment v6 is live from source `22b9993c`. The public UI displays the v0.6.7 login screen and
+  “Dịch vụ đang hoạt động”. The proxy health request returned 200 and the
+  unauthenticated `/auth/me` request returned 401 in API runtime logs.
+- A nonexistent staging fixture login through the UI returns the generic invalid
+  credentials message; no account or session was created. Actual owner login
+  remains pending until human provisioning.
+- APP_URL is the UI origin. AUTH_BOOTSTRAP_ENABLED=false and
+  AUTH_BOOTSTRAP_TOKEN=disabled keep provisioning closed during normal deployment.
+- A successful 214 KB backup was taken before the auth rollout. The prior 0006
+  backup restore and this release's isolated auth tests cover migration integrity;
+  a post-auth staging backup restore has not yet been performed.
+- Screenshot: `artifacts/auth/staging-v067-login.png` (local, ignored).
+
 ## Remaining before business UAT
 
 - Human provisioning and actual staging login.
 - User/role administration and password reset workflows.
 - Project milestone/budget/cost commands with permissions, audit attribution,
   transaction rules and write screens; every mutation needs Origin/CSRF checks.
-- Recheck UI auto-deploy delivery, which missed the preceding develop push.
+- Verify actual staging login/project access after the owner provisions an admin.
 
 This release supplies authenticated access and a project read screen; the 0006
 execution/cost workflow still needs its commands, screens and UAT.

@@ -27,7 +27,9 @@ See `schema/0006-project-execution-cost.md` for scope and remaining runtime work
 
 v0.6.7 adds authentication, persisted sessions, runtime role/company checks and
 the authenticated project read screen. Local integration tests passed 52 checks.
-See `AUTH_ACCESS.md` for first-admin provisioning and validation. Milestone/cost
+Staging API v10 and UI v6 are live with v0.6.7. Health and unauthenticated login
+checks passed; the owner must provision the first admin before authenticated
+staging UAT. See `AUTH_ACCESS.md` for first-admin provisioning and validation. Milestone/cost
 commands, write screens and business UAT remain the next 0006 work.
 
 **Do not continue to 0006 until the Local Integration Gate passes.**
