@@ -7,7 +7,7 @@ seed have passed. Phase 4 acceptance has passed. Backup download and isolated lo
 passed (DEFAULT, 80 permissions, 14 sequences, ADMIN with 80 permissions, one
 applied migration). Storage marker survived Vibehost redeployment. Pushes to
 `develop` automatically deployed both API and UI and passed health. Phase 5 is
-next, beginning with 0006 Project Execution + Cost. See
+underway: 0006 Project Execution + Cost now has a tested data foundation. See
 `STAGING_INFRASTRUCTURE_ACCEPTANCE.md`.
 
 Schema packs implemented in source:
@@ -17,6 +17,13 @@ Schema packs implemented in source:
 - 0003 Project Pipeline + Quotation
 - 0004 Contract Execution + Billing
 - 0005 Service Reconciliation + Revenue + Invoice Scope
+- 0006 Project Execution + Cost — schema, migration, seed and SQL integrity tests;
+  authenticated commands, business UI and UAT remain pending.
+
+0006 local verification: migration from the restored baseline and from an empty
+database passed; 20 invalid writes were rejected; repeated migration/seed and
+the workspace build passed. New seed baseline: 92 permissions, 16 sequences.
+See `schema/0006-project-execution-cost.md` for scope and remaining runtime work.
 
 **Do not continue to 0006 until the Local Integration Gate passes.**
 

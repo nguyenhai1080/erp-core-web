@@ -1,6 +1,6 @@
 # ERP Core Web
 
-Technical Build Pack **v0.6.5** for the ERP Core Web rebuild targeting Vibehost + PostgreSQL 16.
+Technical Build Pack **v0.6.6** for the ERP Core Web rebuild targeting Vibehost + PostgreSQL 16.
 
 ## Staging deployment bundles
 

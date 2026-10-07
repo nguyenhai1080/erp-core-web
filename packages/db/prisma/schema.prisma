@@ -2,6 +2,109 @@ generator client {
   provider = "prisma-client-js"
 }
 
+enum ProjectMilestoneStatus {
+  PLANNED
+  IN_PROGRESS
+  SUBMITTED
+  ACCEPTED
+  CANCELLED
+}
+
+enum ProjectCostStatus {
+  DRAFT
+  APPROVED
+  CANCELLED
+}
+
+enum ProjectCostCategory {
+  LABOR
+  MATERIAL
+  SUBCONTRACT
+  TRAVEL
+  OVERHEAD
+  OTHER
+}
+
+model ProjectMilestone {
+  id              String                 @id @default(uuid()) @db.Uuid
+  companyId       String                 @map("company_id") @db.Uuid
+  projectId       String                 @map("project_id") @db.Uuid
+  milestoneCode   String                 @map("milestone_code")
+  name            String
+  description     String?
+  plannedStart    DateTime?              @map("planned_start") @db.Date
+  plannedEnd      DateTime?              @map("planned_end") @db.Date
+  actualStart     DateTime?              @map("actual_start") @db.Date
+  actualEnd       DateTime?              @map("actual_end") @db.Date
+  progressPercent Decimal                @default(0) @map("progress_percent") @db.Decimal(9, 6)
+  status          ProjectMilestoneStatus @default(PLANNED)
+  acceptedAt      DateTime?              @map("accepted_at")
+  acceptanceRef   String?                @map("acceptance_ref")
+  createdAt       DateTime               @default(now()) @map("created_at")
+  updatedAt       DateTime               @updatedAt @map("updated_at")
+
+  company     Company            @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  project     Project            @relation(fields: [companyId, projectId], references: [companyId, id], onDelete: Restrict)
+  costEntries ProjectCostEntry[]
+
+  @@unique([companyId, projectId, id])
+  @@unique([projectId, milestoneCode])
+  @@index([companyId, projectId, status])
+  @@map("project_milestones")
+}
+
+model ProjectCostBudget {
+  id         String   @id @default(uuid()) @db.Uuid
+  companyId  String   @map("company_id") @db.Uuid
+  projectId  String   @map("project_id") @db.Uuid
+  revisionNo Int      @default(1) @map("revision_no")
+  isCurrent  Boolean  @default(true) @map("is_current")
+  currency   String   @db.VarChar(3)
+  amount     Decimal  @db.Decimal(20, 4)
+  reason     String?
+  approvedAt DateTime @map("approved_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  company     Company            @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  project     Project            @relation(fields: [companyId, projectId], references: [companyId, id], onDelete: Restrict)
+  costEntries ProjectCostEntry[]
+
+  @@unique([companyId, projectId, currency, id])
+  @@unique([projectId, currency, revisionNo])
+  @@index([companyId, projectId, isCurrent])
+  @@map("project_cost_budgets")
+}
+
+model ProjectCostEntry {
+  id          String              @id @default(uuid()) @db.Uuid
+  companyId   String              @map("company_id") @db.Uuid
+  projectId   String              @map("project_id") @db.Uuid
+  milestoneId String?             @map("milestone_id") @db.Uuid
+  budgetId    String?             @map("budget_id") @db.Uuid
+  costCode    String              @map("cost_code")
+  costDate    DateTime            @map("cost_date") @db.Date
+  category    ProjectCostCategory
+  description String
+  currency    String              @db.VarChar(3)
+  amount      Decimal             @db.Decimal(20, 4)
+  status      ProjectCostStatus   @default(DRAFT)
+  sourceRef   String?             @map("source_ref")
+  approvedAt  DateTime?           @map("approved_at")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  company   Company            @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  project   Project            @relation(fields: [companyId, projectId], references: [companyId, id], onDelete: Restrict)
+  milestone ProjectMilestone?  @relation(fields: [companyId, projectId, milestoneId], references: [companyId, projectId, id], onDelete: Restrict)
+  budget    ProjectCostBudget? @relation(fields: [companyId, projectId, currency, budgetId], references: [companyId, projectId, currency, id], onDelete: Restrict)
+
+  @@unique([companyId, costCode])
+  @@index([companyId, projectId, status, costDate])
+  @@index([companyId, projectId, milestoneId])
+  @@index([companyId, projectId, currency, budgetId])
+  @@map("project_cost_entries")
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -472,6 +575,9 @@ model Company {
   revenues                  Revenue[]
   invoiceScopes             InvoiceScope[]
   invoiceScopeItems         InvoiceScopeItem[]
+  projectMilestones         ProjectMilestone[]
+  projectCostBudgets        ProjectCostBudget[]
+  projectCostEntries        ProjectCostEntry[]
 
   @@map("companies")
 }
@@ -1054,7 +1160,11 @@ model Project {
   contractLinks     ProjectContract[]
   sourcedContracts  Contract[]                @relation("ContractSourceProject")
   billingSchedules  ContractBillingSchedule[]
+  milestones        ProjectMilestone[]
+  costBudgets       ProjectCostBudget[]
+  costEntries       ProjectCostEntry[]
 
+  @@unique([companyId, id])
   @@unique([companyId, projectCode])
   @@index([companyId, partnerId])
   @@index([companyId, ownerUserId])
