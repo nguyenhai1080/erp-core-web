@@ -17,8 +17,8 @@ Schema packs implemented in source:
 - 0003 Project Pipeline + Quotation
 - 0004 Contract Execution + Billing
 - 0005 Service Reconciliation + Revenue + Invoice Scope
-- 0006 Project Execution + Cost — schema, migration, seed and SQL integrity tests;
-  authenticated commands, business UI and UAT remain pending.
+- 0006 Project Execution + Cost — schema, migration, seed, integrity tests and
+  initial authenticated execution workspace; formal acceptance and UAT remain.
 
 0006 local verification: migration from the restored baseline and from an empty
 database passed; 20 invalid writes were rejected; repeated migration/seed and
@@ -30,13 +30,14 @@ the authenticated project read screen. Local integration tests passed 52 checks.
 2026-10-08: staging API v14 and UI v7 run v0.6.7 with company code GST and legal
 name CÔNG TY CỔ PHẦN CÔNG NGHỆ GST VIỆT NAM. Post-change backup restore verified
 four migrations, 92 permissions, 16 sequences and the preserved ADMIN account.
-The owner should verify login with GST and existing credentials before business
-UAT. See `AUTH_ACCESS.md` for access validation. Milestone/cost
-commands, write screens and business UAT remain the next 0006 work.
+The owner confirmed login with GST and existing credentials. See `AUTH_ACCESS.md`
+for access validation.
 
 v0.6.8 implements the initial execution workspace: partner/project creation,
 budget revisions, milestone progress/submission, draft cost/approval/cancellation
 and exact per-currency totals. 51 command checks and 52 auth checks passed.
+2026-10-08: staging API v15 and UI v9 built source 4a338f8c and passed public
+health checks; UI displays v0.6.8. Pre-release managed data backup succeeded.
 Formal acceptance, contract/evidence workflows and GST business UAT remain.
 See `EXECUTION_COMMANDS.md`.
 

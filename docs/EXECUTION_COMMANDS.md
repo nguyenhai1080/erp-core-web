@@ -61,6 +61,17 @@ Workspace build and Node 22 API Docker build passed. The local browser produced
 budget 1000000.0001 VND, approved costs 300000.1234 VND and exact remaining
 budget 699999.8767 VND; milestone progress 50% persisted across reload.
 
+Staging rollout on 2026-10-08: API provider version 15 and UI provider version 9
+both built source `4a338f8c` and passed their public HTTP 200 health gates. Direct
+API `/api/v1/health` returned `status: ok`, `database: connected`. The public UI
+shows v0.6.8, company default GST and an operational service. A successful 217 KB
+managed data backup was taken before rollout, labelled “Trước v0.6.8 — GST, tài
+khoản quản trị đã đăng nhập thành công”. No new schema migration or database
+instance was required. The owner's staging login was confirmed before rollout;
+the agent's browser is signed out, so authenticated business UAT on staging
+remains for the GST owner. All browser write fixtures above used disposable local
+data only. Refresh the UI and open Dự án to begin that UAT.
+
 ## Remaining in 0006
 
 Formal acceptance with active project/contract and accessible evidence; milestone
