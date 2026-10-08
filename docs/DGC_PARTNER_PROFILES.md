@@ -52,3 +52,11 @@ pnpm --filter @erp/web dev
 Integration suites require disposable databases, never a staging DATABASE_URL. 74 partner checks, 81 execution checks, 66 evidence checks and 52 auth checks passed (273 total). Browser creation and editing were verified with explicitly fake EXEC_PREVIEW records, including distinct invoice address and contact/invoice emails.
 
 Before staging source push: successful PostgreSQL backup 222 KB, note “Trước v0.6.11 — bổ sung hồ sơ đối tác theo DGC, bảo toàn dữ liệu GST”. Root Dockerfile runs migrate deploy before API start; deploy API before the UI that uses the new fields. Staging verification is recorded after rollout.
+
+## Verified staging rollout — 2026-10-08
+
+- Source code `03fdee55` deployed: API provider v20, UI provider v13.
+- API startup release 0.6.11, 5 migrations found and no pending migrations; managed DB remains erp_core_web_staging_db at vays-db-30016610-postgresql-5432.
+- Both provider public-route probes returned HTTP 200. API health reports status ok / database connected; unauthenticated partner access returns 401.
+- Public UI renders version 0.6.11 and service operational. Authenticated partner create/edit was tested locally using fake records, not on real GST data; user UAT remains after login.
+- Screenshots retained in ignored artifacts/auth: partner-profile-local.png, partner-invoice-local.png, staging-v0611.png, backup-before-v0611.png.

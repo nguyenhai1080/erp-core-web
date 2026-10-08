@@ -299,3 +299,5 @@ develop
 - 273 integration checks passed; local browser create/edit and invoice address persistence verified with fake records.
 - Successful pre-release PostgreSQL backup: 222 KB. See [field mapping and validation](DGC_PARTNER_PROFILES.md).
 - Next: partner UAT, then resume billing conditions, contract activation and formal project acceptance.
+
+Staging v0.6.11 verified: API provider v20 / UI v13, source 03fdee55; both HTTP 200, five migrations current, API database connected. Authenticated partner UAT remains for the owner; local creation/editing used fake data only.
