@@ -42,7 +42,7 @@ const server = createServer(async (request, response) => {
       response.writeHead(405, { Allow: 'GET, HEAD, POST' }); response.end(); return;
     }
     try {
-      const upload = request.method === 'POST' && (/^\/api\/v1\/projects\/[0-9a-f-]{36}\/documents$/i.test(pathname) || ['/api/v1/output-recon/uploads','/api/v1/output-recon/inspect'].includes(pathname));
+      const upload = request.method === 'POST' && (/^\/api\/v1\/projects\/[0-9a-f-]{36}\/documents$/i.test(pathname) || ['/api/v1/company-assets','/api/v1/output-recon/uploads','/api/v1/output-recon/inspect'].includes(pathname));
       const readPdf = request.method === 'POST' && (pathname === '/api/v1/output-recon/inspect' || /^\/api\/v1\/output-recon\/uploads\/[0-9a-f-]{36}\/read$/i.test(pathname));
       const preview = request.method === 'GET' && /^\/api\/v1\/output-recon\/uploads\/[0-9a-f-]{36}\/preview$/i.test(pathname);
       const bodyLimit = upload ? 7 * 1024 * 1024 : 32768;
@@ -51,7 +51,7 @@ const server = createServer(async (request, response) => {
         size += chunk.length;
         if (size > bodyLimit) {
           response.writeHead(413, { 'Content-Type':'application/json; charset=utf-8', 'Cache-Control':'no-store' });
-          response.end(JSON.stringify({ message:'Tệp quá lớn. Chọn PDF tối đa 5 MB.' })); return;
+          response.end(JSON.stringify({ message:'Tệp quá lớn. Chọn file tối đa 5 MB.' })); return;
         }
         chunks.push(chunk);
       }
@@ -72,6 +72,10 @@ const server = createServer(async (request, response) => {
         outputHeaders['Content-Disposition'] = upstream.headers.get('content-disposition') || 'attachment; filename="document.pdf"';
       }
       if (preview && upstream.headers.get('content-type')?.split(';')[0] === 'image/png') outputHeaders['Content-Type'] = 'image/png';
+      if (/^\/api\/v1\/company-assets\/[0-9a-f-]{36}\/download$/i.test(pathname) && ['image/png','image/jpeg','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','application/vnd.ms-excel.sheet.macroEnabled.12'].includes(upstream.headers.get('content-type')?.split(';')[0])) {
+        outputHeaders['Content-Type'] = upstream.headers.get('content-type');
+        outputHeaders['Content-Disposition'] = upstream.headers.get('content-disposition') || 'attachment';
+      }
       const cookies = upstream.headers.getSetCookie();
       if (cookies.length) outputHeaders['Set-Cookie'] = cookies;
       const outputBody = request.method === 'HEAD' ? undefined : Buffer.from(await upstream.arrayBuffer());
