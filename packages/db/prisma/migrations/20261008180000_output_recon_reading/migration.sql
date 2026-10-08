@@ -1,0 +1,1 @@
+ALTER TABLE output_recon_uploads ADD COLUMN raw_text TEXT, ADD COLUMN extraction_data JSONB, ADD COLUMN read_at TIMESTAMP(3);

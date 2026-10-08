@@ -1,5 +1,5 @@
 FROM node:22-bookworm-slim
-RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates poppler-utils tesseract-ocr tesseract-ocr-eng && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@10.18.3 --activate
 COPY . .

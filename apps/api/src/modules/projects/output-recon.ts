@@ -5,7 +5,9 @@ import type {FastifyInstance} from 'fastify';
 import {z} from 'zod';
 import {prisma,Prisma} from '@erp/db';
 import {requirePermission,type AuthConfig} from '../auth/access.js';
-import {audit,CommandError,parse,writeGuard} from './commands.js';
+import {audit,CommandError,parse,writeGuard,unchanged,timestamp} from './commands.js';
+import {parseReconIdentity,matchReconIdentity} from './recon-identity.js';
+import {readReconPdf} from './recon-reader.js';
 const MAX=5*1024*1024;
 const month=z.string().regex(/^(20\d{2}|2100)-(0[1-9]|1[0-2])$/);
 const selection=z.object({partnerId:z.uuid(),serviceId:z.uuid(),period:month});
@@ -16,7 +18,8 @@ function root(){
  const path=process.env.STORAGE_ROOT??'./storage';
  if(process.env.NODE_ENV==='production'&&!isAbsolute(path))throw new CommandError(503,'Kho PDF chưa được cấu hình.');return resolve(path);
 }
-async function preflight(tx:Prisma.TransactionClient,companyId:string,s:z.infer<typeof selection>){
+async function preflight(tx:Prisma.TransactionClient,companyId:string,input:z.infer<typeof selection>){
+ const s={partnerId:input.partnerId,serviceId:input.serviceId,period:input.period};
  const partner=await tx.partner.findFirst({where:{id:s.partnerId,companyId},select:{id:true,partnerKey:true,legalName:true}});
  const service=await tx.service.findFirst({where:{id:s.serviceId,companyId},select:{id:true,serviceKey:true,serviceName:true}});
  if(!partner||!service)throw new CommandError(404,'Không tìm thấy đối tác hoặc dịch vụ của công ty.');
@@ -31,7 +34,7 @@ async function preflight(tx:Prisma.TransactionClient,companyId:string,s:z.infer<
   periodStart:{lte:end},periodEnd:{gte:start}},select:{id:true,scopeCode:true,status:true,updatedAt:true},orderBy:{id:'asc'}});
  const contracts=await tx.contract.findMany({where:{companyId,partnerId:s.partnerId,dgcDirection:'Output',status:'ACTIVE',
   AND:[{OR:[{effectiveDate:null},{effectiveDate:{lte:end}}]},{OR:[{expiryDate:null},{expiryDate:{gte:start}}]}],
-  services:{some:{serviceId:s.serviceId,dgcStatus:'ACTIVE'}}},select:{id:true,contractCode:true,contractName:true,updatedAt:true},orderBy:{id:'asc'}});
+  services:{some:{serviceId:s.serviceId,dgcStatus:'ACTIVE'}}},select:{id:true,contractCode:true,contractNumber:true,contractName:true,updatedAt:true},orderBy:{id:'asc'}});
  const businessKey=[partner.partnerKey.trim().toUpperCase(),normalizeReconService(service.serviceKey),s.period].join('|');
  const snapshot={businessKey,uploads,reconciliations,invoiceScopes,contracts};
  const action=invoiceScopes.length?'BLOCK_FINANCIAL_DEPENDENCY':uploads.length||reconciliations.length?'CONFIRM_REPLACE':'ALLOW_INTAKE';
@@ -42,7 +45,21 @@ async function preflight(tx:Prisma.TransactionClient,companyId:string,s:z.infer<
 }
 const include={partner:{select:{partnerKey:true,legalName:true}},service:{select:{serviceKey:true,serviceName:true}},
  attachment:{select:{originalFilename:true,checksumSha256:true,fileSize:true}},createdBy:{select:{fullName:true}}} as const;
-const dto=(item:any)=>({...item,attachment:{...item.attachment,fileSize:Number(item.attachment.fileSize)}});
+const dto=(item:any)=>{const {rawText,extractionData,...rest}=item;return {...rest,attachment:{...item.attachment,fileSize:Number(item.attachment.fileSize)}};};
+async function sourceBytes(item:{companyId:string;attachment:any}){
+ const a=item.attachment,expected=`output-recon/${item.companyId}/${a.id}.pdf`;
+ if(a.companyId!==item.companyId||a.storageProvider!=='local'||a.storagePath!==expected||a.storedFilename!==a.id+'.pdf')throw new CommandError(409,'Tệp không có đường dẫn kho hợp lệ.');
+ let data:Buffer;try{const file=resolve(root(),expected),stat=await lstat(file);if(!stat.isFile()||stat.isSymbolicLink()||stat.size>MAX||BigInt(stat.size)!==a.fileSize)throw new Error('Invalid file');data=await readFile(file);}catch{throw new CommandError(409,'Tệp PDF không còn truy cập được.');}
+ if(BigInt(data.length)!==a.fileSize||checksum(data)!==a.checksumSha256)throw new CommandError(409,'PDF đã thay đổi; không thể sử dụng.');return data;
+}
+async function assessment(tx:Prisma.TransactionClient,item:{companyId:string;partnerId:string;serviceId:string;period:string},parsed:ReturnType<typeof parseReconIdentity>){
+ const services=await tx.service.findMany({where:{companyId:item.companyId},select:{id:true,serviceKey:true,serviceCode:true,serviceName:true,keyword:true},take:1001});
+ if(services.length>1000)throw new CommandError(409,'Danh mục vượt giới hạn kiểm tra dịch vụ.');
+ const identity=matchReconIdentity(parsed,item,services),check=await preflight(tx,item.companyId,item);
+ const key=(s:string)=>s.toUpperCase().replace(/[^A-Z0-9]/g,'');
+ const contracts=check.contracts.filter(c=>!!parsed.agreementNo&&!!c.contractNumber&&key(c.contractNumber)===key(parsed.agreementNo));
+ return {identity,contracts,contractState:contracts.length===1?'MATCHED':contracts.length>1?'AMBIGUOUS':'UNMATCHED',financialBlocked:check.action==='BLOCK_FINANCIAL_DEPENDENCY',financialMessage:check.action==='BLOCK_FINANCIAL_DEPENDENCY'?check.message:null};
+}
 export async function outputReconRoutes(app:FastifyInstance,config:AuthConfig){
  app.get('/api/v1/output-recon/references',{preHandler:requirePermission('RECON_VIEW')},async request=>{
   const companyId=request.auth!.companyId;const [partners,services]=await prisma.$transaction([
@@ -84,13 +101,33 @@ export async function outputReconRoutes(app:FastifyInstance,config:AuthConfig){
    },{timeout:15000});return reply.code(201).send({item});
   }catch(error){if(created)try{await unlink(file);}catch(cleanupError){request.log.error({err:cleanupError,attachmentId},'Recon file rollback failed');}throw error;}
  });
+ app.get('/api/v1/output-recon/uploads/:id',{preHandler:requirePermission('RECON_VIEW')},async request=>{
+  const {id}=parse(z.object({id:z.uuid()}).strict(),request.params);const item=await prisma.outputReconUpload.findFirst({where:{id,companyId:request.auth!.companyId},include});if(!item)throw new CommandError(404,'Không tìm thấy PDF đối soát của công ty.');
+  const parsed=item.rawText?parseReconIdentity(item.rawText):null;
+  const current=parsed?await prisma.$transaction(tx=>assessment(tx,item,parsed),{isolationLevel:'RepeatableRead'}):null;
+  return {item:dto(item),rawText:item.rawText,extractionData:item.extractionData,parsed,assessment:current};
+ });
+ app.post('/api/v1/output-recon/uploads/:id/read',{onRequest:writeGuard('RECON_UPLOAD',config)},async request=>{
+  if(!request.auth!.permissions.includes('RECON_VIEW'))throw new CommandError(403,'Cần quyền xem đối soát để đọc PDF.');
+  const {id}=parse(z.object({id:z.uuid()}).strict(),request.params),body=parse(z.object({expectedUpdatedAt:timestamp,forceOcr:z.boolean().default(false)}).strict(),request.body),user=request.auth!;
+  const old=await prisma.outputReconUpload.findFirst({where:{id,companyId:user.companyId},include:{attachment:true}});if(!old)throw new CommandError(404,'Không tìm thấy PDF đối soát của công ty.');unchanged(old,body.expectedUpdatedAt);
+  if(!['UPLOADED','OCR_EXTRACTED','UNDER_REVIEW'].includes(old.status))throw new CommandError(409,'Trạng thái PDF không cho phép đọc lại.');
+  const extracted=await readReconPdf(await sourceBytes(old),body.forceOcr),parsed=parseReconIdentity(extracted.text);
+  return prisma.$transaction(async tx=>{
+   await tx.$queryRaw`SELECT id FROM output_recon_uploads WHERE id=${id}::uuid AND company_id=${user.companyId}::uuid FOR UPDATE`;
+   const current=await tx.outputReconUpload.findFirstOrThrow({where:{id,companyId:user.companyId},include:{attachment:true}});unchanged(current,body.expectedUpdatedAt);
+   if(current.attachment.checksumSha256!==old.attachment.checksumSha256)throw new CommandError(409,'PDF đã thay đổi. Tải lại trước khi đọc.');await sourceBytes(current);
+   const evaluated=await assessment(tx,current,parsed),{text,...metadata}=extracted;
+   const extractionData={...metadata,sourceChecksum:current.attachment.checksumSha256,readById:user.userId,parsed,assessment:evaluated,identityVerified:false,financialDataVerified:false};
+   const item=await tx.outputReconUpload.update({where:{id},data:{rawText:text,extractionData,readAt:new Date(),status:evaluated.identity.state==='MATCHED'?'OCR_EXTRACTED':'UNDER_REVIEW'},include});
+   await audit(tx,user,'RECON_READ_PDF','OutputReconUpload',id,{status:current.status,readAt:current.readAt},{status:item.status,readAt:item.readAt,...extractionData});
+   return {item:dto(item),rawText:text,extractionData,parsed,assessment:evaluated};
+  },{timeout:15000});
+ });
  app.get('/api/v1/output-recon/uploads/:id/download',{preHandler:requirePermission('RECON_VIEW')},async(request,reply)=>{
   const {id}=parse(z.object({id:z.uuid()}).strict(),request.params);const companyId=request.auth!.companyId;
   const item=await prisma.outputReconUpload.findFirst({where:{id,companyId},include:{attachment:true}});if(!item||item.attachment.companyId!==companyId)throw new CommandError(404,'Không tìm thấy PDF đối soát của công ty.');
-  const a=item.attachment,expected=`output-recon/${companyId}/${a.id}.pdf`;
-  if(a.storageProvider!=='local'||a.storagePath!==expected||a.storedFilename!==a.id+'.pdf')throw new CommandError(409,'Tệp không có đường dẫn kho hợp lệ.');
-  let data:Buffer;try{const file=resolve(root(),expected),stat=await lstat(file);if(!stat.isFile()||stat.isSymbolicLink()||stat.size>MAX||BigInt(stat.size)!==a.fileSize)throw new Error('Invalid file');data=await readFile(file);}catch{throw new CommandError(409,'Tệp PDF không còn truy cập được.');}
-  if(BigInt(data.length)!==a.fileSize||checksum(data)!==a.checksumSha256)throw new CommandError(409,'PDF đã thay đổi; không thể sử dụng.');
+  const data=await sourceBytes(item);
   return reply.header('Content-Type','application/pdf').header('Content-Disposition',`attachment; filename="${item.uploadCode.replace(/[^A-Za-z0-9_-]/g,'_')}.pdf"`).header('Cache-Control','no-store').header('X-Content-Type-Options','nosniff').send(data);
  });
 }

@@ -1604,6 +1604,9 @@ model OutputReconUpload {
   businessKey String @map("business_key")
   attachmentId String @map("attachment_id") @db.Uuid
   status ReconciliationStatus @default(UPLOADED)
+  rawText String? @map("raw_text") @db.Text
+  extractionData Json? @map("extraction_data")
+  readAt DateTime? @map("read_at")
   replacementContext Json? @map("replacement_context")
   createdById String @map("created_by_id") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at")
