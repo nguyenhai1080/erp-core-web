@@ -1,12 +1,12 @@
 # ERP Core Web
 
-Technical Build Pack **v0.6.8** for the ERP Core Web rebuild targeting Vibehost + PostgreSQL 16.
+Technical Build Pack **v0.6.9** for the ERP Core Web rebuild targeting Vibehost + PostgreSQL 16.
 
 ## Staging deployment bundles
 
 API root `/` and `/api/v1/health` check the database. The web UI proxies authenticated
 requests to `API_BASE_URL`. Login and company-scoped project execution are implemented:
-partner/project creation, budget revisions, milestone progress and audited cost
+partner/project creation, budget revisions, milestone progress/return/cancellation and audited cost
 approval/cancellation. Formal contract acceptance remains pending. See
 [execution commands](docs/EXECUTION_COMMANDS.md) and [authentication setup](docs/AUTH_ACCESS.md).
 API `APP_URL` must identify the UI origin for login/CSRF checks.

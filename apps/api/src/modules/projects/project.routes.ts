@@ -59,7 +59,15 @@ export async function projectRoutes(app: FastifyInstance, config: AuthConfig) {
         const actual = new Prisma.Decimal(actuals.find(v => v.currency === currency)?._sum.amount ?? 0); const budget = current.find(v => v.currency === currency);
         return { currency, approvedCost: can('COST_VIEW') ? actual.toFixed(4) : null, budget: budget?.amount.toFixed(4) ?? null,
           variance: can('COST_VIEW') && budget ? budget.amount.minus(actual).toFixed(4) : null };
-      }); return { item, milestones, costs, budgets, currentBudgets: current, totals, limit: 100 };
+      });
+      const acceptance = can('MILESTONE_VIEW') ? {
+        implemented: false,
+        projectInExecution: ['IN_PROGRESS','UAT'].includes(item.status),
+        activeMainContract: can('CONTRACT_VIEW') ? !!await tx.projectContract.findFirst({ where: { companyId: user.companyId, projectId: id,
+          role: 'MAIN', contract: { companyId: user.companyId, status: 'ACTIVE' } } }) : null,
+        evidenceWorkflowAvailable: false
+      } : null;
+      return { item, milestones, costs, budgets, currentBudgets: current, totals, acceptance, limit: 100 };
     }, { isolationLevel: 'RepeatableRead' });
   });
   app.post('/api/v1/projects/:id/budgets', { preHandler: writeGuard('COST_BUDGET_REVISE', config) }, async (request, reply) => {
@@ -91,6 +99,9 @@ export async function projectRoutes(app: FastifyInstance, config: AuthConfig) {
       await project(tx, user, ids.id, true); const previous = await tx.projectCostEntry.findFirst({ where: { id: ids.child, companyId: user.companyId, projectId: ids.id } });
       if (!previous) throw new CommandError(404, 'Không tìm thấy chi phí.'); unchanged(previous, body.expectedUpdatedAt);
       if (previous.status === 'CANCELLED' || (action === 'approve' && previous.status !== 'DRAFT')) throw new CommandError(409, 'Trạng thái chi phí không cho phép thao tác này.');
+      if (action === 'approve' && previous.milestoneId && await tx.projectMilestone.findFirst({ where: {
+        id: previous.milestoneId, companyId: user.companyId, projectId: ids.id, status: 'CANCELLED'
+      } })) throw new CommandError(409, 'Mốc liên quan đã huỷ. Huỷ chi phí nháp và tạo khoản thay thế cho mốc hợp lệ.');
       const item = await tx.projectCostEntry.update({ where: { id: previous.id }, data: { status: action === 'approve' ? 'APPROVED' : 'CANCELLED', ...(action === 'approve' ? { approvedAt: new Date() } : {}) } });
       await audit(tx, user, action === 'approve' ? 'COST_APPROVE' : 'COST_CANCEL', 'ProjectCostEntry', item.id, previous, item, body.reason); return { item };
     });
@@ -115,4 +126,27 @@ export async function projectRoutes(app: FastifyInstance, config: AuthConfig) {
       await audit(tx, user, body.submit ? 'MILESTONE_SUBMIT' : 'MILESTONE_PROGRESS', 'ProjectMilestone', item.id, previous, item); return { item };
     });
   });
+  for (const action of ['return','cancel'] as const) app.post(`/api/v1/projects/:id/milestones/:child/${action}`,
+    { preHandler: writeGuard(action === 'return' ? 'MILESTONE_EDIT' : 'MILESTONE_CANCEL', config) }, async request => {
+      const ids = childIds(request.params);
+      const body = parse(z.object({ expectedUpdatedAt: timestamp, reason: text }).strict(), request.body);
+      const user = request.auth!;
+      return prisma.$transaction(async tx => {
+        await project(tx, user, ids.id, true);
+        const previous = await tx.projectMilestone.findFirst({ where: { id: ids.child, companyId: user.companyId, projectId: ids.id } });
+        if (!previous) throw new CommandError(404, 'Không tìm thấy mốc tiến độ.');
+        unchanged(previous, body.expectedUpdatedAt);
+        if (action === 'return' ? previous.status !== 'SUBMITTED' : !['PLANNED','IN_PROGRESS','SUBMITTED'].includes(previous.status)) {
+          throw new CommandError(409, 'Trạng thái mốc không cho phép thao tác này.');
+        }
+        if (action === 'cancel' && await tx.projectCostEntry.findFirst({ where: {
+          companyId: user.companyId, projectId: ids.id, milestoneId: previous.id, status: 'APPROVED'
+        } })) throw new CommandError(409, 'Mốc còn chi phí đã duyệt. Xử lý các khoản này trước khi huỷ mốc.');
+        const item = await tx.projectMilestone.update({ where: { id: previous.id }, data: {
+          status: action === 'return' ? 'IN_PROGRESS' : 'CANCELLED'
+        } });
+        await audit(tx, user, action === 'return' ? 'MILESTONE_RETURN' : 'MILESTONE_CANCEL', 'ProjectMilestone', item.id, previous, item, body.reason);
+        return { item };
+      });
+    });
 }

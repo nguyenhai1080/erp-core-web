@@ -41,6 +41,11 @@ health checks; UI displays v0.6.8. Pre-release managed data backup succeeded.
 Formal acceptance, contract/evidence workflows and GST business UAT remain.
 See `EXECUTION_COMMANDS.md`.
 
+v0.6.9 adds reasoned milestone return/cancellation and an informational acceptance
+checklist. Approved linked costs prevent milestone cancellation; cancelled
+milestones prevent draft-cost approval. 81 execution checks and 52 auth checks
+passed. Formal contract/evidence acceptance and GST business UAT remain pending.
+
 **Do not continue to 0006 until the Local Integration Gate passes.**
 
 ## Phase 1 - Local Integration Gate (Windows)

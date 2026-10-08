@@ -15,6 +15,7 @@ export function Execution({ permissions, csrf, request }: Props) {
   const [busy,setBusy] = useState(false); const [loading,setLoading] = useState(true); const [message,setMessage] = useState('');
   const [costAction,setCostAction] = useState<{row:Row; action:'approve'|'cancel'}|null>(null);
   const [milestone,setMilestone] = useState<Row|null>(null);
+  const [milestoneAction,setMilestoneAction] = useState<{row:Row; action:'return'|'cancel'}|null>(null);
   async function loadLists() {
     const [p,r] = await Promise.all([request('/projects'), can('PARTNER_VIEW') ? request('/partners') : Promise.resolve({items:[]})]);
     setProjects(p.items); setPartners(r.items);
@@ -25,13 +26,13 @@ export function Execution({ permissions, csrf, request }: Props) {
       .catch(e=>{if(!cancelled)setMessage(e.message);}).finally(()=>{if(!cancelled)setLoading(false);});
     return ()=>{cancelled=true;};
   }, []);
-  useEffect(()=>{let cancelled=false; setDetail(null);setMilestone(null);setCostAction(null);setMessage('');
+  useEffect(()=>{let cancelled=false; setDetail(null);setMilestone(null);setMilestoneAction(null);setCostAction(null);setMessage('');
     if(selected) void request(`/projects/${selected.id}/execution`).then(d=>{if(!cancelled)setDetail(d);}).catch(e=>{if(!cancelled)setMessage(e.message);});
     return ()=>{cancelled=true;};
   },[selected?.id]);
   async function submit(event: React.FormEvent<HTMLFormElement>, path:string, make:(data:FormData)=>unknown) {
     event.preventDefault(); if(busy)return; const form=event.currentTarget; const data=new FormData(form);setBusy(true);setMessage('');
-    try { await request(path,make(data),csrf);form.reset();setCostAction(null);setMilestone(null);
+    try { await request(path,make(data),csrf);form.reset();setCostAction(null);setMilestone(null);setMilestoneAction(null);
       await loadLists(); if(selected)setDetail(await request(`/projects/${selected.id}/execution`));setMessage('Đã lưu thành công.');
     } catch(e){setMessage(e instanceof Error?e.message:'Không thể lưu.');} finally{setBusy(false);}
   }
@@ -58,12 +59,21 @@ export function Execution({ permissions, csrf, request }: Props) {
         <p className="muted">Ngân sách và chi phí được theo dõi riêng theo đồng tiền. Số dư = ngân sách − chi phí đã duyệt.</p>
         <div className="table-scroll"><table><thead><tr><th>Đồng tiền</th><th>Ngân sách hiện hành</th><th>Chi phí đã duyệt</th><th>Số dư</th></tr></thead><tbody>{detail.totals.map((t:any)=><tr key={t.currency}><td>{t.currency}</td><td>{amount(t.budget)}</td><td>{amount(t.approvedCost)}</td><td>{amount(t.variance)}</td></tr>)}</tbody></table></div>
       </section>
+      {detail.acceptance&&<section className="panel"><h3>Điều kiện nghiệm thu chính thức</h3>
+        <p>Dự án đang thực hiện / UAT: {detail.acceptance.projectInExecution?'Đạt':'Chưa đạt'}</p>
+        <p>Hợp đồng chính đang hiệu lực: {detail.acceptance.activeMainContract===null?'Cần quyền xem hợp đồng':detail.acceptance.activeMainContract?'Đạt':'Chưa có'}</p>
+        <p>Hồ sơ nghiệm thu: luồng lưu và kiểm tra quyền truy cập chứng từ đang được bổ sung.</p>
+        <p className="muted">Nghiệm thu chính thức hiện chưa mở. Gửi đề nghị không tạo doanh thu hoặc xác nhận điều kiện thanh toán.</p>
+      </section>}
       {can('COST_BUDGET_REVISE')&&can('COST_BUDGET_VIEW')&&form('Ban hành phiên bản ngân sách',base+'/budgets',d=>({currency:s(d,'currency'),amount:s(d,'amount'),reason:s(d,'reason'),expectedRevisionNo:detail.currentBudgets.find((b:Row)=>b.currency===s(d,'currency'))?.revisionNo??0}),<>
         <Field label="Đồng tiền ngân sách" name="currency" value={detail.item.currency??'VND'} pattern="[A-Z]{3}" maxLength={3}/><Field label="Số tiền ngân sách" name="amount" inputMode="decimal" pattern="(0|[1-9][0-9]{0,15})(\.[0-9]{1,4})?"/><Field label="Lý do ban hành ngân sách" name="reason" maxLength={500}/></>,'Ban hành ngân sách')}
       {can('COST_BUDGET_VIEW')&&<section className="panel"><h3>Lịch sử ngân sách</h3><div className="table-scroll"><table><thead><tr><th>Phiên bản</th><th>Đồng tiền</th><th>Số tiền</th><th>Lý do</th><th>Trạng thái</th></tr></thead><tbody>{detail.budgets.map((b:Row)=><tr key={b.id}><td>{b.revisionNo}</td><td>{b.currency}</td><td>{b.amount}</td><td>{b.reason}</td><td>{b.isCurrent?'Hiện hành':'Lịch sử'}</td></tr>)}</tbody></table></div></section>}
       {can('MILESTONE_CREATE')&&form('Thêm mốc tiến độ',base+'/milestones',d=>({name:s(d,'name'),plannedStart:optional(d,'plannedStart'),plannedEnd:optional(d,'plannedEnd')}),<>
         <Field label="Tên mốc" name="name" maxLength={500}/><Field label="Ngày bắt đầu dự kiến" name="plannedStart" type="date" required={false}/><Field label="Ngày kết thúc dự kiến" name="plannedEnd" type="date" required={false}/></>,'Tạo mốc')}
-      {can('MILESTONE_VIEW')&&<section className="panel"><h3>Mốc tiến độ</h3><p className="muted">Gửi nghiệm thu chỉ chốt đề nghị. Nghiệm thu chính thức cần hồ sơ và hợp đồng, sẽ bổ sung ở bước sau.</p><div className="table-scroll"><table><thead><tr><th>Mã / tên</th><th>Dự kiến kết thúc</th><th>Tiến độ</th><th>Trạng thái</th><th></th></tr></thead><tbody>{detail.milestones.map((m:Row)=><tr key={m.id}><td>{m.milestoneCode} · {m.name}</td><td>{m.plannedEnd?.slice(0,10)??'—'}</td><td>{Number(m.progressPercent)*100}%</td><td>{labels[m.status]??m.status}</td><td>{can('MILESTONE_EDIT')&&['PLANNED','IN_PROGRESS'].includes(m.status)&&<button disabled={busy} onClick={()=>setMilestone(m)}>Cập nhật tiến độ</button>}</td></tr>)}</tbody></table></div></section>}
+      {can('MILESTONE_VIEW')&&<section className="panel"><h3>Mốc tiến độ</h3><p className="muted">Gửi nghiệm thu chỉ chốt đề nghị. Nghiệm thu chính thức cần hồ sơ và hợp đồng, sẽ bổ sung ở bước sau.</p><div className="table-scroll"><table><thead><tr><th>Mã / tên</th><th>Dự kiến kết thúc</th><th>Tiến độ</th><th>Trạng thái</th><th></th></tr></thead><tbody>{detail.milestones.map((m:Row)=><tr key={m.id}><td>{m.milestoneCode} · {m.name}</td><td>{m.plannedEnd?.slice(0,10)??'—'}</td><td>{Number(m.progressPercent)*100}%</td><td>{labels[m.status]??m.status}</td><td>{can('MILESTONE_EDIT')&&['PLANNED','IN_PROGRESS'].includes(m.status)&&<button disabled={busy} onClick={()=>{setMilestone(m);setMilestoneAction(null);}}>Cập nhật tiến độ</button>} {can('MILESTONE_EDIT')&&m.status==='SUBMITTED'&&<button disabled={busy} onClick={()=>{setMilestone(null);setMilestoneAction({row:m,action:'return'});}}>Trả lại chỉnh sửa</button>} {can('MILESTONE_CANCEL')&&['PLANNED','IN_PROGRESS','SUBMITTED'].includes(m.status)&&<button disabled={busy} onClick={()=>{setMilestone(null);setMilestoneAction({row:m,action:'cancel'});}}>Huỷ mốc</button>}</td></tr>)}</tbody></table></div></section>}
+      {milestoneAction&&form(`${milestoneAction.action==='return'?'Trả lại chỉnh sửa':'Huỷ mốc'}: ${milestoneAction.row.milestoneCode} · ${milestoneAction.row.name}`,base+`/milestones/${milestoneAction.row.id}/${milestoneAction.action}`,d=>({expectedUpdatedAt:milestoneAction.row.updatedAt,reason:s(d,'reason')}),<>
+        <p>{milestoneAction.action==='return'?'Mốc trở về đang thực hiện để sửa và gửi lại; giữ nguyên tiến độ và ngày thực tế.':'Mốc đã huỷ được giữ trong lịch sử. Mốc còn chi phí đã duyệt chưa thể huỷ; chi phí nháp gắn mốc đã huỷ không thể duyệt.'}</p>
+        <Field label="Lý do thao tác mốc" name="reason" maxLength={500}/></>,milestoneAction.action==='return'?'Xác nhận trả lại':'Xác nhận huỷ mốc')}
       {milestone&&form('Tiến độ: '+milestone.name,base+`/milestones/${milestone.id}/progress`,d=>({expectedUpdatedAt:milestone.updatedAt,progressPercent:(Number(s(d,'percent'))/100).toFixed(6),actualStart:s(d,'actualStart'),actualEnd:optional(d,'actualEnd'),submit:s(d,'submit')==='yes'}),<>
         <Field label="Tiến độ (%)" name="percent" type="number" value={Number(milestone.progressPercent)*100} min="0" max="100" step="0.0001"/><Field label="Ngày bắt đầu thực tế" name="actualStart" type="date" value={milestone.actualStart?.slice(0,10)??today()}/><Field label="Ngày kết thúc thực tế" name="actualEnd" type="date" required={false} value={milestone.actualEnd?.slice(0,10)??''}/><Field label="Thao tác tiến độ" name="submit" value="no"><option value="no">Lưu tiến độ</option><option value="yes">Gửi nghiệm thu (100% và có ngày kết thúc)</option></Field></>,'Lưu tiến độ')}
       {can('COST_CREATE')&&form('Thêm chi phí nháp',base+'/costs',d=>({costDate:s(d,'costDate'),description:s(d,'description'),category:s(d,'category'),currency:s(d,'currency'),amount:s(d,'amount'),sourceRef:optional(d,'sourceRef'),milestoneId:optional(d,'milestoneId')}),<>

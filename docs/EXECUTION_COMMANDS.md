@@ -1,4 +1,4 @@
-# Project execution workspace — v0.6.8
+# Project execution workspace — v0.6.9
 
 GST owner login is verified. This release adds the first usable 0006 command/UI
 slice; formal milestone acceptance, contract/evidence workflows and business UAT
@@ -13,6 +13,12 @@ remain outstanding.
 4. Enter draft costs, optionally linked to a milestone. Currency/amount are explicit.
 5. Review a cost, choose Duyệt or Huỷ, enter a reason and confirm.
 6. Review current budget, approved costs and remaining budget per currency.
+7. Return a submitted milestone for correction with a reason, then edit and
+   resubmit it. Actual dates/progress are preserved when returning it.
+8. Cancel a planned/in-progress/submitted milestone with a reason. Its record
+   remains in history; accepted and already cancelled milestones are locked.
+   Resolve approved linked costs before cancellation. Draft costs linked to a
+   cancelled milestone cannot be approved; cancel and replace those drafts.
 
 Money inputs use a dot for the decimal separator, no thousands separator, at most
 16 integer and 4 fractional digits. The server retains Decimal(20,4); UI financial
@@ -34,7 +40,16 @@ overrun. Draft/cancelled costs are excluded; currencies are never combined.
 - Cost transition: DRAFT → APPROVED or CANCELLED; APPROVED → CANCELLED.
   Correction uses cancellation and a replacement draft, with audit reasons.
 - Milestone transition: PLANNED → IN_PROGRESS → SUBMITTED (or direct submission
-  with valid actual dates and 100%). Submitted/finalized milestones cannot be edited.
+  with valid actual dates and 100%). SUBMITTED may return to IN_PROGRESS with a
+  reason. PLANNED/IN_PROGRESS/SUBMITTED may become CANCELLED with a reason, only
+  if no approved linked cost remains. ACCEPTED/CANCELLED cannot reopen.
+- Return/cancel use project row locking, stale-version checks and transactional
+  audit. Cancellation racing linked cost approval allows only one success, so an
+  approved cost cannot end up linked to a cancelled milestone through commands.
+- The acceptance checklist exposes project IN_PROGRESS/UAT and a linked MAIN
+  contract with ACTIVE status. Contract results require CONTRACT_VIEW; the whole
+  checklist requires MILESTONE_VIEW. This is informational, not authorization to
+  accept: evidence access, contract dates and formal acceptance remain pending.
 - Terminal projects reject new writes. No endpoint bypasses formal acceptance.
 - Detail lists contain at most 100 recent records; totals aggregate every approved
   cost. Current budgets are supplied separately from truncated history.
@@ -74,7 +89,17 @@ data only. Refresh the UI and open Dự án to begin that UAT.
 
 ## Remaining in 0006
 
-Formal acceptance with active project/contract and accessible evidence; milestone
-cancellation/rework; project activation/contract linking; user/role management;
+Formal acceptance with active project/contract and accessible evidence;
+project activation/contract linking; user/role management;
 business pagination/search and GST owner UAT. Continue those before marking the
 whole 0006 pack complete or moving to invoice/ledger accounting.
+
+## v0.6.9 validation — 2026-10-08
+
+81 execution integration checks and 52 authentication checks passed against
+disposable local databases. Workspace build passed. Local browser validation
+submitted a milestone at 100%, returned it with a reason, then cancelled a second
+milestone; statuses persisted after reload and approved cost totals were unchanged.
+New integration checks include permission denial, cross-company scope, stale
+writes, accepted/cancelled finality, cost-cancellation races and checklist privacy.
+There is no new migration, permission or database instance in this patch.
