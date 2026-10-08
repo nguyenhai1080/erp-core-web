@@ -1,5 +1,13 @@
 # ERP Core Web - Local -> GitHub -> Vibehost Roadmap
 
+## Owner scope correction — 2026-10-08 (takes precedence)
+
+**ERP Core inherits the complete ERP DGC functionality and business behavior; Projects are the additional domain.** The previous project-first sequence below is historical, not the current implementation priority. A schema pack or green health check is not DGC business parity.
+
+The exact donor deployment is Apps Script **version 61**, retrieved read-only (24 source files). The current ERP Core release has only partial inherited functionality. First close the source-grounded DGC gaps, including service contracts, reconciliation/OCR, monthly revenue, invoices, payments, AR/AP, SOA, reporting and administration. Then complete and integrate the additional Projects lifecycle.
+
+See [DGC inheritance baseline and revised work order](DGC_INHERITANCE_BASELINE.md), [full function/source inventory](DGC_SOURCE_INVENTORY.json) and [data declarations](DGC_DATA_CATALOG.json). Keep raw donor source in ignored artifacts/dgc-reference. This audit does not trigger a deployment or import business data.
+
 ## Current gate
 
 2026-10-07: Local Integration, GitHub baseline, staging API health, migration and

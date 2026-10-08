@@ -2,6 +2,8 @@
 
 Technical Build Pack **v0.6.11** for the ERP Core Web rebuild targeting Vibehost + PostgreSQL 16.
 
+**Scope:** inherit the existing ERP DGC functionality and business rules in full, then add Projects. The current release is a partial technical foundation, not a completed migration of DGC. The donor is the exact deployed Apps Script version 61. See the [inheritance baseline and gap analysis](docs/DGC_INHERITANCE_BASELINE.md); it supersedes the earlier project-first roadmap.
+
 ## Staging deployment bundles
 
 API root `/` and `/api/v1/health` check the database. The web UI proxies authenticated
