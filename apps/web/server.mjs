@@ -42,8 +42,9 @@ const server = createServer(async (request, response) => {
       response.writeHead(405, { Allow: 'GET, HEAD, POST' }); response.end(); return;
     }
     try {
-      const upload = request.method === 'POST' && (/^\/api\/v1\/projects\/[0-9a-f-]{36}\/documents$/i.test(pathname) || pathname === '/api/v1/output-recon/uploads');
-      const readPdf = request.method === 'POST' && /^\/api\/v1\/output-recon\/uploads\/[0-9a-f-]{36}\/read$/i.test(pathname);
+      const upload = request.method === 'POST' && (/^\/api\/v1\/projects\/[0-9a-f-]{36}\/documents$/i.test(pathname) || ['/api/v1/output-recon/uploads','/api/v1/output-recon/inspect'].includes(pathname));
+      const readPdf = request.method === 'POST' && (pathname === '/api/v1/output-recon/inspect' || /^\/api\/v1\/output-recon\/uploads\/[0-9a-f-]{36}\/read$/i.test(pathname));
+      const preview = request.method === 'GET' && /^\/api\/v1\/output-recon\/uploads\/[0-9a-f-]{36}\/preview$/i.test(pathname);
       const bodyLimit = upload ? 7 * 1024 * 1024 : 32768;
       const chunks = []; let size = 0;
       for await (const chunk of request) {
@@ -63,13 +64,14 @@ const server = createServer(async (request, response) => {
       const upstream = await fetch(target, {
         method: request.method, headers,
         body: request.method === 'POST' ? Buffer.concat(chunks) : undefined,
-        redirect: 'manual', signal: AbortSignal.timeout(readPdf ? 120000 : upload ? 60000 : 15000)
+        redirect: 'manual', signal: AbortSignal.timeout(readPdf ? 120000 : upload ? 60000 : preview ? 45000 : 15000)
       });
       const outputHeaders = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };
       if (upstream.headers.get('content-type')?.split(';')[0] === 'application/pdf') {
         outputHeaders['Content-Type'] = 'application/pdf';
         outputHeaders['Content-Disposition'] = upstream.headers.get('content-disposition') || 'attachment; filename="document.pdf"';
       }
+      if (preview && upstream.headers.get('content-type')?.split(';')[0] === 'image/png') outputHeaders['Content-Type'] = 'image/png';
       const cookies = upstream.headers.getSetCookie();
       if (cookies.length) outputHeaders['Set-Cookie'] = cookies;
       const outputBody = request.method === 'HEAD' ? undefined : Buffer.from(await upstream.arrayBuffer());

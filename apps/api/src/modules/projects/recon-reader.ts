@@ -35,3 +35,17 @@ export async function readReconPdf(data:Buffer,forceOcr=false){
   return {text,pages:result.map(({page,method,text})=>({page,method,characters:text.length})),engine:'poppler+tesseract-eng',readerVersion:'0.6.17',forceOcr};
  }finally{try{if(directory)await rm(directory,{recursive:true,force:true});}finally{reading=false;}}
 }
+
+// Preview the original visual page, retaining Poppler's rotation/aspect ratio.
+// Use the same bounded worker as OCR so scans cannot overload the API.
+export async function previewReconPage(data:Buffer,page:number){
+ if(reading)throw new CommandError(429,'Máy chủ đang đọc PDF khác. Vui lòng thử lại sau.');reading=true;let directory:string|undefined;
+ try{
+  const deadline=Date.now()+30000;directory=await mkdtemp(resolve(tmpdir(),'erp-recon-preview-'));const file=resolve(directory,'source.pdf');await writeFile(file,data,{mode:0o600});
+  const info=await run(process.env.PDFINFO_BIN??'pdfinfo',[file],deadline),pages=Number(info.match(/^Pages:\s*(\d+)/m)?.[1]);
+  if(!Number.isInteger(pages)||pages<1||pages>12||page>pages)throw new CommandError(422,'Trang PDF không hợp lệ. Bộ đọc hỗ trợ tối đa 12 trang.');
+  if(/^Encrypted:\s*yes/im.test(info))throw new CommandError(422,'PDF có mật khẩu. Cần bản PDF không khóa.');
+  const image=resolve(directory,'page');await run(process.env.PDFTOPPM_BIN??'pdftoppm',['-f',String(page),'-l',String(page),'-singlefile','-scale-to','1600','-png',file,image],deadline);
+  const bytes=await readFile(image+'.png');if(bytes.length>8*1024*1024||bytes.subarray(0,8).toString('hex')!=='89504e470d0a1a0a')throw new CommandError(422,'Không tạo được ảnh xem trước.');return bytes;
+ }finally{try{if(directory)await rm(directory,{recursive:true,force:true});}finally{reading=false;}}
+}
