@@ -21,7 +21,7 @@ Reviewed target at code commit `03fdee55` (staging v0.6.11). A model in Prisma i
 | Existing DGC module | Source and behavior to inherit | ERP Core runtime now |
 | --- | --- | --- |
 | Dashboard | `60_Reports_Dashboard.js`, `Index.html`: approved monthly revenue, AR/AP, approved cash movement and service/month charts | Infrastructure/company cards only; business KPIs and charts missing |
-| Dịch vụ | `10_MasterData.js`: create/edit/delete safeguards, code/name/category/keyword/dates/status, dependent finance records | Service schema only; no service CRUD runtime/UI |
+| Dịch vụ | `10_MasterData.js`: create/edit/delete safeguards, code/name/category/keyword/dates/status, dependent finance records | v0.6.12 adds inherited create/view/edit/guarded delete and full profile; see DGC_SERVICE_PARITY.md for mappings, adaptations and pending role/data migration work |
 | Đối tác | `10_MasterData.js`: full profile, Active/Inactive behavior, code/ID and billing-contact fallbacks, referenced deletion guard | Create/view/edit/list exists; default PROSPECT and several fallback/code/status behaviors differ; not full parity |
 | Hợp đồng | `10_MasterData.js`: Input/Output/Other service contracts, multiple services, share/fixed fee, tax, billing cycle, effective dates, status, owner and attachments | Project MAIN draft/review exists; it does not replace DGC service contracts |
 | Đối soát đầu ra | `20_Recon_Core.js`, `21_Recon_OCR.js`, `22_Recon_PDF_Approval.js`: Movitel PDF/OCR, matching partner/contract/service/period, manual review, duplicate/replacement preflight, approval and stamp | Generic reconciliation schema only; operational PDF/OCR/review/replacement path missing |

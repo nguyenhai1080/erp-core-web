@@ -11,7 +11,8 @@
     "test:auth": "node tests/auth.integration.mjs",
     "test:execution": "node tests/execution.integration.mjs",
     "test:evidence": "node tests/evidence.integration.mjs",
-    "test:partners": "node tests/partners.integration.mjs"
+    "test:partners": "node tests/partners.integration.mjs",
+    "test:services": "node tests/services.integration.mjs"
   },
   "dependencies": {
     "@erp/db": "workspace:*",

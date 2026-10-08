@@ -113,6 +113,7 @@ datasource db {
 enum RecordStatus {
   ACTIVE
   INACTIVE
+  SUSPENDED
   ARCHIVED
 }
 
@@ -900,8 +901,15 @@ model Service {
   id                   String          @id @default(uuid()) @db.Uuid
   companyId            String          @map("company_id") @db.Uuid
   serviceCode          String          @map("service_code")
+  serviceKey           String          @default(uuid()) @map("service_key")
   serviceName          String          @map("service_name")
   category             ServiceCategory
+  dgcCategory          String?         @map("dgc_category")
+  keyword              String?
+  startDate            DateTime?       @map("start_date") @db.Date
+  endDate              DateTime?       @map("end_date") @db.Date
+  createdBy            String?         @map("created_by")
+  updatedBy            String?         @map("updated_by")
   description          String?
   defaultBusinessModel BusinessModel?  @map("default_business_model")
   defaultCurrency      String?         @map("default_currency") @db.VarChar(3)
@@ -921,6 +929,7 @@ model Service {
   revenues                Revenue[]
 
   @@unique([companyId, serviceCode])
+  @@unique([companyId, serviceKey])
   @@index([companyId, category])
   @@index([companyId, status])
   @@map("services")

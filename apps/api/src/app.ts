@@ -6,6 +6,7 @@ import { authRoutes } from './modules/auth/auth.routes.js';
 import { loadAuthConfig, type AuthConfig } from './modules/auth/access.js';
 import { PasswordBusyError } from './modules/auth/password.js';
 import { projectRoutes } from './modules/projects/project.routes.js';
+import { serviceRoutes } from './modules/services/service.routes.js';
 export async function buildApp(options: { auth?: AuthConfig; logger?: boolean } = {}) {
   const auth = options.auth ?? loadAuthConfig();
   const app = Fastify({ bodyLimit: 32768, logger: options.logger === false ? false : {
@@ -24,5 +25,6 @@ export async function buildApp(options: { auth?: AuthConfig; logger?: boolean } 
   await app.register(healthRoutes);
   await app.register(authRoutes, auth);
   await app.register(projectRoutes, auth);
+  await app.register(serviceRoutes, auth);
   return app;
 }
