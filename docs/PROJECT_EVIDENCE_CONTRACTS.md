@@ -69,6 +69,15 @@ attached DOC-0001, submitted and approved internally. PDF download matched the
 original SHA256; totals/status/files were retained after page reload and API restart.
 No fixture files or contracts were inserted into live GST staging.
 
+Staging API provider v18 and UI provider v12 built source `01f8eb8c` and passed
+their public HTTP 200 health gates. API and UI health report database connected;
+anonymous requests to the new upload route return 401. The public UI serves
+v0.6.10 with GST as the default company. A managed PostgreSQL backup completed
+successfully (220 KB), labelled “v0.6.10 — hồ sơ PDF và hợp đồng nháp, giữ nguyên
+dữ liệu GST”. There is no new schema migration, permission grant or DB instance.
+Persistent storage configuration is reused; live GST PDF upload/approval UAT
+remains with the owner.
+
 ## Next roadmap gate
 
 Implement billing-plan reconciliation, mandatory activation conditions, recording

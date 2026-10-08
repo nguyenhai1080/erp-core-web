@@ -53,6 +53,8 @@ draft/document/submission/internal approval/return. 199 local checks passed.
 Next: billing-plan reconciliation and activation conditions, signed evidence,
 contract activation/project execution stage, then formal milestone acceptance.
 See `PROJECT_EVIDENCE_CONTRACTS.md`. Business UAT remains with the GST owner.
+Staging API v18 / UI v12 deployed source 01f8eb8c and passed public health checks;
+UI displays v0.6.10. Managed PostgreSQL backup succeeded (220 KB).
 
 **Do not continue to 0006 until the Local Integration Gate passes.**
 
