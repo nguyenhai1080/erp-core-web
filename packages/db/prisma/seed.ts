@@ -47,7 +47,7 @@ async function main() {
     });
   }
   for (const seq of [
-    ['PARTNER','PTR',4],['SERVICE','SVC',4],['CONTRACT','CT',4],['PROJECT','PRJ',4],['QUOTATION','QT',4],
+    ['PARTNER','PRT',4],['SERVICE','SVC',4],['CONTRACT','CT',4],['PROJECT','PRJ',4],['QUOTATION','QT',4],
     ['PROJECT_COST','CST',4],['PROJECT_MILESTONE','MS',4],['RECON','REC',4],['REVENUE','REV',4],['INVOICE_SCOPE','ISC',4],['INVOICE','INV',4],['AR','AR',4],['AP','AP',4],['PAYMENT','PAY',4],['DOCUMENT','DOC',4],['TRANSACTION','TXN',8]
   ] as const) {
     await prisma.sequence.upsert({

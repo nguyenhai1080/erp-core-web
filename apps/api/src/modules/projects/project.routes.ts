@@ -20,7 +20,7 @@ export async function projectRoutes(app: FastifyInstance, config: AuthConfig) {
   app.addHook('onSend', async (_request, reply, payload) => { reply.header('Cache-Control', 'no-store'); return payload; });
   app.setErrorHandler((error, request, reply) => {
     if (error instanceof CommandError) return reply.code(error.statusCode).send({ message: error.message });
-    if (error instanceof Prisma.PrismaClientKnownRequestError && ['P2002','P2034','P2028'].includes(error.code)) return reply.code(409).send({ message: 'Dữ liệu vừa thay đổi hoặc mã bị trùng. Tải lại và thử lại.' });
+    if (error instanceof Prisma.PrismaClientKnownRequestError && ['P2002','P2003','P2034','P2028'].includes(error.code)) return reply.code(409).send({ message: 'Dữ liệu vừa thay đổi, mã bị trùng hoặc hồ sơ đã có liên kết. Tải lại và thử lại.' });
     request.log.error({ err: error }, 'Project command failed');
     const status = typeof error === 'object' && error && 'statusCode' in error && typeof error.statusCode === 'number' ? error.statusCode : 500;
     return reply.code(status >= 400 && status < 500 ? status : 500).send({ message: 'Không thể xử lý yêu cầu.' });

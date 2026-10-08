@@ -805,14 +805,18 @@ model Partner {
   id                  String        @id @default(uuid()) @db.Uuid
   companyId           String        @map("company_id") @db.Uuid
   partnerCode         String        @map("partner_code")
+  partnerKey          String        @default(uuid()) @map("partner_key")
   legalName           String        @map("legal_name")
   shortName           String?       @map("short_name")
   partnerType         PartnerType   @map("partner_type")
-  status              PartnerStatus @default(PROSPECT)
+  status              PartnerStatus @default(ACTIVE)
   countryCode         String?       @map("country_code") @db.VarChar(2)
   countryName         String?       @map("country_name")
   partnerCategory     String?       @map("partner_category")
   invoiceRecipient    String?       @map("invoice_recipient")
+  contactName         String?       @map("contact_name")
+  createdBy           String?       @map("created_by")
+  updatedBy           String?       @map("updated_by")
   invoiceEmail        String?       @map("invoice_email")
   billingAddress      String?       @map("billing_address")
   taxCode             String?       @map("tax_code")
@@ -843,6 +847,7 @@ model Partner {
   invoiceScopes   InvoiceScope[]
 
   @@unique([companyId, partnerCode])
+  @@unique([companyId, partnerKey])
   @@index([companyId, legalName])
   @@index([companyId, taxCode])
   @@index([companyId, status])
