@@ -19,3 +19,6 @@ h1{font-size:28px;line-height:1.2;margin:0 0 6px}h2{font-size:20px;line-height:1
 .recon-confirm { display:flex; align-items:center; gap:10px; }
 .recon-confirm input { width:auto; }
 .recon-table td:nth-child(4) { white-space:nowrap; }
+
+.recon-raw { white-space:pre-wrap; overflow-wrap:anywhere; max-height:380px; overflow:auto; padding:16px; background:#f0f5fa; }
+.recon-match { background:#e6f7ed; color:#165c36; }

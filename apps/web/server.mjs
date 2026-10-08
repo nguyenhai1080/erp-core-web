@@ -43,6 +43,7 @@ const server = createServer(async (request, response) => {
     }
     try {
       const upload = request.method === 'POST' && (/^\/api\/v1\/projects\/[0-9a-f-]{36}\/documents$/i.test(pathname) || pathname === '/api/v1/output-recon/uploads');
+      const readPdf = request.method === 'POST' && /^\/api\/v1\/output-recon\/uploads\/[0-9a-f-]{36}\/read$/i.test(pathname);
       const bodyLimit = upload ? 7 * 1024 * 1024 : 32768;
       const chunks = []; let size = 0;
       for await (const chunk of request) {
@@ -62,7 +63,7 @@ const server = createServer(async (request, response) => {
       const upstream = await fetch(target, {
         method: request.method, headers,
         body: request.method === 'POST' ? Buffer.concat(chunks) : undefined,
-        redirect: 'manual', signal: AbortSignal.timeout(upload ? 60000 : 15000)
+        redirect: 'manual', signal: AbortSignal.timeout(readPdf ? 120000 : upload ? 60000 : 15000)
       });
       const outputHeaders = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };
       if (upstream.headers.get('content-type')?.split(';')[0] === 'application/pdf') {

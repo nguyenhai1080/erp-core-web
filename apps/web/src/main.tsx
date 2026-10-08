@@ -9,13 +9,13 @@ import { OutputRecon } from './OutputRecon';
 
 type Identity = { userId: string; companyId: string; companyCode: string; fullName: string; email: string; permissions: string[] };
 type Session = { user: Identity; csrfToken: string };
-const version = '0.6.16';
+const version = '0.6.17';
 document.title = `ERP Core Web · v${version}`;
 async function api(path: string, body?: unknown, csrf?: string) {
   const response = await fetch('/api/v1' + path, {
     method: body === undefined ? 'GET' : 'POST', credentials: 'same-origin',
     headers: { ...(body === undefined ? {} : { 'Content-Type': 'application/json' }), ...(csrf ? { 'X-CSRF-Token': csrf } : {}) },
-    body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout((path.endsWith('/documents') || path === '/output-recon/uploads') ? 60000 : 15000)
+    body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout((path.endsWith('/documents') || path === '/output-recon/uploads' || path.endsWith('/read')) ? (path.endsWith('/read') ? 120000 : 60000) : 15000)
   });
   if (response.status === 401 && path === '/auth/me') return null;
   if (response.status === 401) window.dispatchEvent(new Event('erp-session-expired'));
