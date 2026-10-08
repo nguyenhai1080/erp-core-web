@@ -15,3 +15,7 @@ h1{font-size:28px;line-height:1.2;margin:0 0 6px}h2{font-size:20px;line-height:1
 @media(max-width:650px){.shell{grid-template-columns:minmax(0,1fr)}.shell aside{position:static;height:auto;padding:14px 12px}.shell aside h2{font-size:22px}.sidebar-subtitle{margin-bottom:10px}.sidebar-footer,.nav-title{display:none}.sidebar-nav{display:flex;gap:4px;flex-wrap:wrap}button.nav{width:auto;margin:0;padding:8px 10px}header{flex-direction:column;gap:12px}header h1{font-size:25px}.top-user{text-align:left;width:100%;justify-content:space-between}.partner-grid{grid-template-columns:1fr}.partner-dialog-heading,.partner-dialog-body,.partner-dialog-footer{padding:16px}.partner-dialog-heading h2{font-size:22px}.partner-search{align-items:stretch;flex-direction:column}.section-heading{flex-wrap:wrap}.list-toolbar input{width:100%;flex-basis:100%}.list-toolbar select{flex:1;min-width:130px}.auth-card{padding:24px}}
 
 .contract-service-options{max-height:210px;overflow:auto;border:1px solid var(--border);border-radius:10px;padding:8px 12px;margin:8px 0 14px}.contract-service-options label{display:flex;align-items:center;gap:8px;margin:8px 0;font-weight:400}.contract-service-options input{width:16px;min-height:16px;margin:0}
+
+.recon-confirm { display:flex; align-items:center; gap:10px; }
+.recon-confirm input { width:auto; }
+.recon-table td:nth-child(4) { white-space:nowrap; }

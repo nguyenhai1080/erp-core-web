@@ -42,7 +42,7 @@ const server = createServer(async (request, response) => {
       response.writeHead(405, { Allow: 'GET, HEAD, POST' }); response.end(); return;
     }
     try {
-      const upload = request.method === 'POST' && /^\/api\/v1\/projects\/[0-9a-f-]{36}\/documents$/i.test(pathname);
+      const upload = request.method === 'POST' && (/^\/api\/v1\/projects\/[0-9a-f-]{36}\/documents$/i.test(pathname) || pathname === '/api/v1/output-recon/uploads');
       const bodyLimit = upload ? 7 * 1024 * 1024 : 32768;
       const chunks = []; let size = 0;
       for await (const chunk of request) {
