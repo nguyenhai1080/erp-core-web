@@ -212,6 +212,7 @@ enum ContractType {
 
 enum ContractStatus {
   DRAFT
+  SUSPENDED
   UNDER_REVIEW
   APPROVED
   READY_TO_SIGN
@@ -990,6 +991,15 @@ model Contract {
   id                    String               @id @default(uuid()) @db.Uuid
   companyId             String               @map("company_id") @db.Uuid
   contractCode          String               @map("contract_code")
+  dgcDirection          String?              @map("dgc_direction")
+  revenueShareRate      Decimal?             @map("revenue_share_rate") @db.Decimal(9, 6)
+  fixedFee              Decimal?             @map("fixed_fee") @db.Decimal(20, 4)
+  taxRate               Decimal?             @map("tax_rate") @db.Decimal(9, 6)
+  billingCycle          String?              @map("billing_cycle")
+  ownerEmail            String?              @map("owner_email")
+  attachmentUrl         String?              @map("attachment_url")
+  createdBy             String?              @map("created_by")
+  updatedBy             String?              @map("updated_by")
   contractNumber        String?              @map("contract_number")
   contractName          String               @map("contract_name")
   partnerId             String               @map("partner_id") @db.Uuid
@@ -1117,7 +1127,8 @@ model ContractService {
   marketCode             String?          @map("market_code")
   channelCode            String?          @map("channel_code")
   scopeReference         String?          @map("scope_reference")
-  effectiveFrom          DateTime         @map("effective_from") @db.Date
+  effectiveFrom          DateTime?        @map("effective_from") @db.Date
+  dgcStatus              String?          @map("dgc_status")
   effectiveTo            DateTime?        @map("effective_to") @db.Date
   status                 RecordStatus     @default(ACTIVE)
   createdAt              DateTime         @default(now()) @map("created_at")
