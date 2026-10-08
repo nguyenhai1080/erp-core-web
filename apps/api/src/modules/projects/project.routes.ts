@@ -4,6 +4,7 @@ import { prisma, Prisma } from '@erp/db';
 import { projectAccessWhere, requirePermission, type AuthConfig } from '../auth/access.js';
 import { audit, code, CommandError, currency, date, money, parse, project, text, timestamp, unchanged, writeGuard } from './commands.js';
 import { evidenceRoutes } from './evidence.js';
+import { partnerRoutes } from './partners.js';
 const projectId = (input: unknown) => parse(z.object({ id: z.uuid() }), input).id;
 const childIds = (input: unknown) => parse(z.object({ id: z.uuid(), child: z.uuid() }), input);
 const budgetSchema = z.object({ currency, amount: money, reason: text, expectedRevisionNo: z.number().int().min(0) }).strict();
@@ -24,17 +25,7 @@ export async function projectRoutes(app: FastifyInstance, config: AuthConfig) {
     const status = typeof error === 'object' && error && 'statusCode' in error && typeof error.statusCode === 'number' ? error.statusCode : 500;
     return reply.code(status >= 400 && status < 500 ? status : 500).send({ message: 'Không thể xử lý yêu cầu.' });
   });
-  app.get('/api/v1/partners', { preHandler: requirePermission('PARTNER_VIEW') }, async request => ({
-    items: await prisma.partner.findMany({ where: { companyId: request.auth!.companyId, status: { in: ['ACTIVE','PROSPECT'] } }, take: 100,
-      orderBy: [{ legalName: 'asc' }, { id: 'asc' }], select: { id: true, partnerCode: true, legalName: true } })
-  }));
-  app.post('/api/v1/partners', { preHandler: writeGuard('PARTNER_CREATE', config) }, async (request, reply) => {
-    const body = parse(z.object({ legalName: text, partnerType: z.enum(['CUSTOMER','SUPPLIER','BOTH','OTHER']) }).strict(), request.body); const user = request.auth!;
-    const item = await prisma.$transaction(async tx => {
-      const item = await tx.partner.create({ data: { ...body, companyId: user.companyId, ownerUserId: user.userId, partnerCode: await code(tx, user.companyId, 'PARTNER', 'PTR') } });
-      await audit(tx, user, 'PARTNER_CREATE', 'Partner', item.id, null, item); return item;
-    }); return reply.code(201).send({ item });
-  });
+  await app.register(partnerRoutes, config);
   app.get('/api/v1/projects', { preHandler: requirePermission('PROJECT_VIEW') }, async request => ({
     items: await prisma.project.findMany({ where: projectAccessWhere(request.auth!), take: 100, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       select: { id: true, projectCode: true, projectName: true, status: true, progressPercent: true, currency: true } }), limit: 100

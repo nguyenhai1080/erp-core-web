@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { EvidenceWorkspace } from './EvidenceWorkspace';
+import { PartnerCreate } from './Partners';
 type Row = { id: string; [key: string]: any };
 type Props = { permissions: string[]; csrf: string; request: (path: string, body?: unknown, csrf?: string) => Promise<any> };
 const labels: Record<string,string> = { DRAFT:'Nháp', APPROVED:'Đã duyệt', CANCELLED:'Đã huỷ', PLANNED:'Kế hoạch', IN_PROGRESS:'Đang thực hiện', SUBMITTED:'Đã gửi nghiệm thu', ACCEPTED:'Đã nghiệm thu', LEAD:'Cơ hội', LABOR:'Nhân công', MATERIAL:'Vật tư', SUBCONTRACT:'Thầu phụ', TRAVEL:'Đi lại', OVERHEAD:'Chi phí chung', OTHER:'Khác' };
@@ -49,8 +50,7 @@ export function Execution({ permissions, csrf, request }: Props) {
       <p className="muted">Tối đa 100 dự án mới nhất trong phạm vi quyền của bạn.</p>
       {!projects.length?<p>Chưa có dự án. Tạo đối tác và dự án bên dưới để bắt đầu.</p>:<div className="table-scroll"><table><thead><tr><th>Mã</th><th>Dự án</th><th>Trạng thái</th><th></th></tr></thead><tbody>{projects.map(p=><tr key={p.id}><td>{p.projectCode}</td><td>{p.projectName}</td><td>{labels[p.status]??p.status}</td><td><button disabled={busy} onClick={()=>setSelected(p)}>Mở dự án</button></td></tr>)}</tbody></table></div>}
     </section>
-    {!selected&&can('PARTNER_CREATE')&&form('Thêm đối tác','/partners',d=>({legalName:s(d,'legalName'),partnerType:s(d,'partnerType')}),<>
-      <Field label="Tên pháp lý đối tác" name="legalName" maxLength={500}/><Field label="Loại đối tác" name="partnerType" value="CUSTOMER"><option value="CUSTOMER">Khách hàng</option><option value="SUPPLIER">Nhà cung cấp</option><option value="BOTH">Khách hàng và nhà cung cấp</option><option value="OTHER">Khác</option></Field></>,'Tạo đối tác')}
+    {!selected&&can('PARTNER_CREATE')&&<PartnerCreate permissions={permissions} csrf={csrf} request={request} onSaved={loadLists}/>}
     {!selected&&can('PROJECT_CREATE')&&can('PARTNER_VIEW')&&form('Tạo dự án','/projects',d=>({projectName:s(d,'projectName'),partnerId:s(d,'partnerId'),currency:s(d,'currency')}),<>
       <Field label="Tên dự án" name="projectName" maxLength={500}/><Field label="Đối tác" name="partnerId" value=""><option value="" disabled>Chọn đối tác</option>{partners.map(p=><option key={p.id} value={p.id}>{p.partnerCode} · {p.legalName}</option>)}</Field><Field label="Đồng tiền dự án" name="currency" value="VND" pattern="[A-Z]{3}" maxLength={3}/></>,'Tạo dự án')}
     </>}

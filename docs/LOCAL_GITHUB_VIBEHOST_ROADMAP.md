@@ -290,3 +290,12 @@ develop
 -> tag v1.0.0
 -> Vibehost production
 ```
+
+## v0.6.11 — DGC partner profile parity
+
+- Read the current DGC application and complete partner modal, including invoice address.
+- Add the 14 source fields, four directions and seven categories, with a dedicated partner list/search/view/edit page.
+- Add five nullable profile columns; preserve existing partner records and GST ownership.
+- 273 integration checks passed; local browser create/edit and invoice address persistence verified with fake records.
+- Successful pre-release PostgreSQL backup: 222 KB. See [field mapping and validation](DGC_PARTNER_PROFILES.md).
+- Next: partner UAT, then resume billing conditions, contract activation and formal project acceptance.

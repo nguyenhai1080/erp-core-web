@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './styles.css';
 import { Execution } from './Execution';
+import { Partners } from './Partners';
 
 type Identity = { userId: string; companyId: string; companyCode: string; fullName: string; email: string; permissions: string[] };
 type Session = { user: Identity; csrfToken: string };
-const version = '0.6.10';
+const version = '0.6.11';
 document.title = `ERP Core Web · v${version}`;
 async function api(path: string, body?: unknown, csrf?: string) {
   const response = await fetch('/api/v1' + path, {
@@ -82,10 +83,11 @@ function App() {
   return <div className="shell"><aside><h2>ERP Core</h2>
     <button className={'nav ' + (page === 'dashboard' ? 'active' : '')} onClick={() => { setPage('dashboard'); setMessage(''); }}>Tổng quan</button>
     {session.user.permissions.includes('PROJECT_VIEW') && <button className={'nav ' + (page === 'projects' ? 'active' : '')} onClick={() => setPage('projects')}>Dự án</button>}
+    {session.user.permissions.includes('PARTNER_VIEW') && <button className={'nav ' + (page === 'partners' ? 'active' : '')} onClick={() => setPage('partners')}>Đối tác</button>}
     <div className="nav muted">Các chức năng khác sẽ được bổ sung</div>
-  </aside><main><header><div><h1>{page === 'projects' ? 'Dự án' : 'Tổng quan'}</h1><p className="muted">{session.user.companyCode} · {session.user.fullName}</p></div><button onClick={logout} disabled={busy}>Đăng xuất</button></header>
+  </aside><main><header><div><h1>{page === 'projects' ? 'Dự án' : page === 'partners' ? 'Đối tác' : 'Tổng quan'}</h1><p className="muted">{session.user.companyCode} · {session.user.fullName}</p></div><button onClick={logout} disabled={busy}>Đăng xuất</button></header>
     {message && <p className="notice" role="alert">{message}</p>}
-    {page === 'dashboard' ? <><section className="cards"><article><b>Dịch vụ</b><p>{health}</p><a href="/api/v1/health" target="_blank" rel="noreferrer">Kiểm tra kết nối</a></article><article><b>Công ty</b><p>{session.user.companyCode}</p></article><article><b>Môi trường</b><p>v{version} · Staging</p></article></section><section className="panel"><h3>Chào {session.user.fullName}</h3><p>Mở Dự án để quản lý đối tác, mốc tiến độ, ngân sách và chi phí.</p></section></> : <Execution permissions={session.user.permissions} csrf={session.csrfToken} request={api}/>}
+    {page === 'dashboard' ? <><section className="cards"><article><b>Dịch vụ</b><p>{health}</p><a href="/api/v1/health" target="_blank" rel="noreferrer">Kiểm tra kết nối</a></article><article><b>Công ty</b><p>{session.user.companyCode}</p></article><article><b>Môi trường</b><p>v{version} · Staging</p></article></section><section className="panel"><h3>Chào {session.user.fullName}</h3><p>Mở Dự án để quản lý đối tác, mốc tiến độ, ngân sách và chi phí.</p></section></> : page === 'partners' ? <Partners permissions={session.user.permissions} csrf={session.csrfToken} request={api}/> : <Execution permissions={session.user.permissions} csrf={session.csrfToken} request={api}/>}
   </main></div>;
 }
 createRoot(document.getElementById('root')!).render(<React.StrictMode><App/></React.StrictMode>);

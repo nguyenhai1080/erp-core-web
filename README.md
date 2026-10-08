@@ -1,6 +1,6 @@
 # ERP Core Web
 
-Technical Build Pack **v0.6.10** for the ERP Core Web rebuild targeting Vibehost + PostgreSQL 16.
+Technical Build Pack **v0.6.11** for the ERP Core Web rebuild targeting Vibehost + PostgreSQL 16.
 
 ## Staging deployment bundles
 
@@ -11,6 +11,8 @@ approval/cancellation. Formal contract acceptance remains pending. See
 [execution commands](docs/EXECUTION_COMMANDS.md) and [authentication setup](docs/AUTH_ACCESS.md).
 Project-scoped PDF upload/download and contract draft/internal review are available;
 see [project evidence and contracts](docs/PROJECT_EVIDENCE_CONTRACTS.md).
+Partner profiles follow the complete current DGC form, with search, view and audited editing;
+see [DGC partner profiles](docs/DGC_PARTNER_PROFILES.md).
 API `APP_URL` must identify the UI origin for login/CSRF checks.
 
 Build upload bundles from this repository on Windows:
