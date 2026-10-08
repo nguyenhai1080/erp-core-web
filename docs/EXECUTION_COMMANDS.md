@@ -1,7 +1,8 @@
 # Project execution workspace — v0.6.9
 
-GST owner login is verified. This release adds the first usable 0006 command/UI
-slice; formal milestone acceptance, contract/evidence workflows and business UAT
+GST owner login is verified. v0.6.8 added the initial 0006 command/UI slice;
+v0.6.9 adds milestone return/cancellation. Formal milestone acceptance,
+contract/evidence workflows and business UAT
 remain outstanding.
 
 ## Owner workflow
@@ -103,3 +104,10 @@ milestone; statuses persisted after reload and approved cost totals were unchang
 New integration checks include permission denial, cross-company scope, stale
 writes, accepted/cancelled finality, cost-cancellation races and checklist privacy.
 There is no new migration, permission or database instance in this patch.
+
+Staging: API provider v16 and UI provider v11 built `a47329c5` and passed public
+HTTP 200 health gates. API health returned `status: ok`, `database: connected`;
+UI displays v0.6.9 and defaults to GST. A 220 KB managed PostgreSQL backup
+labelled “Trước v0.6.9 — trả lại và huỷ mốc, giữ nguyên dữ liệu GST” completed
+successfully. Authenticated GST business UAT remains with the owner; the agent
+verified the new write workflow only against the disposable local fixture.

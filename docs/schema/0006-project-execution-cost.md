@@ -1,6 +1,7 @@
 # 0006 — Project Execution + Cost
 
-Status: data foundation and initial authenticated commands/UI implemented in v0.6.8.
+Status: data foundation and initial authenticated commands/UI implemented in v0.6.8;
+reasoned milestone return/cancellation and acceptance checklist added in v0.6.9.
 See `../EXECUTION_COMMANDS.md` for the usable workflow and remaining scope.
 This follows the schema-pack approach of 0002–0005. It does not introduce public
 financial write endpoints or claim that user acceptance testing is complete.
@@ -45,7 +46,7 @@ Seed adds 12 milestone/cost/budget permission codes and two sequences:
 and 16 sequences. Repeated seed preserves existing sequence counters and records.
 The v0.6.8 commands enforce relevant permissions at runtime.
 
-## Runtime work still required before business UAT
+## Runtime rules and remaining work
 
 Authenticated, company-scoped commands must enforce RBAC, attribute actions to the
 current user, write AuditLog in the same transaction, and validate legal transitions.
@@ -54,7 +55,8 @@ Acceptance must check the active project/contract and evidence access; it must n
 automatically create revenue or mark a billing trigger verified.
 Reports sum only APPROVED costs per currency and show budget variance separately.
 Cancelled entries remain available for audit, excluded from actual-cost totals.
-These rules need integration tests when the commands are implemented.
+Commands for budgets, costs, milestone progress/return/cancellation have integration
+tests. Formal acceptance with contract and accessible evidence remains outstanding.
 
 ## Local verification
 

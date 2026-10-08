@@ -45,6 +45,8 @@ v0.6.9 adds reasoned milestone return/cancellation and an informational acceptan
 checklist. Approved linked costs prevent milestone cancellation; cancelled
 milestones prevent draft-cost approval. 81 execution checks and 52 auth checks
 passed. Formal contract/evidence acceptance and GST business UAT remain pending.
+Staging API v16 / UI v11 deployed source a47329c5 and passed public health checks;
+the public UI serves v0.6.9. Pre-release PostgreSQL backup succeeded (220 KB).
 
 **Do not continue to 0006 until the Local Integration Gate passes.**
 
