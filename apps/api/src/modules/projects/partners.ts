@@ -90,7 +90,7 @@ export async function partnerRoutes(app: FastifyInstance, config: AuthConfig) {
     await prisma.$transaction(async tx=>{
       await tx.$queryRaw`SELECT id FROM partners WHERE id=${id}::uuid AND company_id=${user.companyId}::uuid FOR UPDATE`;
       const old=await tx.partner.findFirst({where:{id,companyId:user.companyId},include:{_count:{select:{contacts:true,bankAccounts:true,partnerServices:true,
-        contracts:true,contractParties:true,projects:true,quotations:true,reconciliations:true,revenues:true,invoiceScopes:true}}}});
+        contracts:true,contractParties:true,projects:true,quotations:true,reconciliations:true,revenues:true,invoiceScopes:true,outputReconUploads:true}}}});
       if(!old)throw new CommandError(404,'Không tìm thấy đối tác của công ty.');unchanged(old,body.expectedUpdatedAt);
       if(Object.values(old._count).some(n=>n>0))throw new CommandError(409,'Đối tác đã có liên kết nghiệp vụ hoặc hồ sơ liên quan. Chuyển sang Inactive thay vì xóa.');
       const {_count,...snapshot}=old;await tx.partner.delete({where:{id}});await audit(tx,user,'PARTNER_DELETE','Partner',id,snapshot,null,body.reason);

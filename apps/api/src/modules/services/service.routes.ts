@@ -79,7 +79,7 @@ export async function serviceRoutes(app:FastifyInstance, config:AuthConfig) {
     await prisma.$transaction(async tx=>{
       await tx.$queryRaw`SELECT id FROM services WHERE id=${id}::uuid AND company_id=${user.companyId}::uuid FOR UPDATE`;
       const old=await tx.service.findFirst({where:{id,companyId:user.companyId},include:{_count:{select:{partnerServices:true,contractItems:true,
-        contractServices:true,quotationItems:true,parentRelationships:true,childRelationships:true,reconciliationItems:true,commercialTermSnapshots:true,revenues:true}}}});
+        contractServices:true,quotationItems:true,parentRelationships:true,childRelationships:true,reconciliationItems:true,commercialTermSnapshots:true,revenues:true,outputReconUploads:true}}}});
       if(!old)throw new CommandError(404,'Không tìm thấy dịch vụ của công ty.');unchanged(old,body.expectedUpdatedAt);
       if(Object.values(old._count).some(n=>n>0))throw new CommandError(409,'Dịch vụ đã có liên kết nghiệp vụ. Chuyển sang Inactive hoặc Suspended thay vì xóa.');
       const {_count,...snapshot}=old;
