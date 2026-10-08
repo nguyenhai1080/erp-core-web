@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { EvidenceWorkspace } from './EvidenceWorkspace';
 type Row = { id: string; [key: string]: any };
 type Props = { permissions: string[]; csrf: string; request: (path: string, body?: unknown, csrf?: string) => Promise<any> };
 const labels: Record<string,string> = { DRAFT:'Nháp', APPROVED:'Đã duyệt', CANCELLED:'Đã huỷ', PLANNED:'Kế hoạch', IN_PROGRESS:'Đang thực hiện', SUBMITTED:'Đã gửi nghiệm thu', ACCEPTED:'Đã nghiệm thu', LEAD:'Cơ hội', LABOR:'Nhân công', MATERIAL:'Vật tư', SUBCONTRACT:'Thầu phụ', TRAVEL:'Đi lại', OVERHEAD:'Chi phí chung', OTHER:'Khác' };
@@ -62,9 +63,12 @@ export function Execution({ permissions, csrf, request }: Props) {
       {detail.acceptance&&<section className="panel"><h3>Điều kiện nghiệm thu chính thức</h3>
         <p>Dự án đang thực hiện / UAT: {detail.acceptance.projectInExecution?'Đạt':'Chưa đạt'}</p>
         <p>Hợp đồng chính đang hiệu lực: {detail.acceptance.activeMainContract===null?'Cần quyền xem hợp đồng':detail.acceptance.activeMainContract?'Đạt':'Chưa có'}</p>
-        <p>Hồ sơ nghiệm thu: luồng lưu và kiểm tra quyền truy cập chứng từ đang được bổ sung.</p>
+        <p>Hồ sơ nghiệm thu: tải PDF vào mục Hồ sơ dự án bên dưới. Phê duyệt nghiệm thu sẽ được bổ sung sau luồng kích hoạt hợp đồng.</p>
         <p className="muted">Nghiệm thu chính thức hiện chưa mở. Gửi đề nghị không tạo doanh thu hoặc xác nhận điều kiện thanh toán.</p>
       </section>}
+      <EvidenceWorkspace key={selected.id} projectId={selected.id} currency={detail.item.currency??'VND'} detail={detail}
+        permissions={permissions} csrf={csrf} request={request} busy={busy} setBusy={setBusy}
+        refresh={async()=>{await loadLists();setDetail(await request(base+'/execution'));}}/>
       {can('COST_BUDGET_REVISE')&&can('COST_BUDGET_VIEW')&&form('Ban hành phiên bản ngân sách',base+'/budgets',d=>({currency:s(d,'currency'),amount:s(d,'amount'),reason:s(d,'reason'),expectedRevisionNo:detail.currentBudgets.find((b:Row)=>b.currency===s(d,'currency'))?.revisionNo??0}),<>
         <Field label="Đồng tiền ngân sách" name="currency" value={detail.item.currency??'VND'} pattern="[A-Z]{3}" maxLength={3}/><Field label="Số tiền ngân sách" name="amount" inputMode="decimal" pattern="(0|[1-9][0-9]{0,15})(\.[0-9]{1,4})?"/><Field label="Lý do ban hành ngân sách" name="reason" maxLength={500}/></>,'Ban hành ngân sách')}
       {can('COST_BUDGET_VIEW')&&<section className="panel"><h3>Lịch sử ngân sách</h3><div className="table-scroll"><table><thead><tr><th>Phiên bản</th><th>Đồng tiền</th><th>Số tiền</th><th>Lý do</th><th>Trạng thái</th></tr></thead><tbody>{detail.budgets.map((b:Row)=><tr key={b.id}><td>{b.revisionNo}</td><td>{b.currency}</td><td>{b.amount}</td><td>{b.reason}</td><td>{b.isCurrent?'Hiện hành':'Lịch sử'}</td></tr>)}</tbody></table></div></section>}

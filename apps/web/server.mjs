@@ -42,10 +42,15 @@ const server = createServer(async (request, response) => {
       response.writeHead(405, { Allow: 'GET, HEAD, POST' }); response.end(); return;
     }
     try {
+      const upload = request.method === 'POST' && /^\/api\/v1\/projects\/[0-9a-f-]{36}\/documents$/i.test(pathname);
+      const bodyLimit = upload ? 7 * 1024 * 1024 : 32768;
       const chunks = []; let size = 0;
       for await (const chunk of request) {
         size += chunk.length;
-        if (size > 32768) { response.writeHead(413); response.end(); return; }
+        if (size > bodyLimit) {
+          response.writeHead(413, { 'Content-Type':'application/json; charset=utf-8', 'Cache-Control':'no-store' });
+          response.end(JSON.stringify({ message:'Tệp quá lớn. Chọn PDF tối đa 5 MB.' })); return;
+        }
         chunks.push(chunk);
       }
       const headers = { Accept: 'application/json' };
@@ -57,9 +62,13 @@ const server = createServer(async (request, response) => {
       const upstream = await fetch(target, {
         method: request.method, headers,
         body: request.method === 'POST' ? Buffer.concat(chunks) : undefined,
-        redirect: 'manual', signal: AbortSignal.timeout(15000)
+        redirect: 'manual', signal: AbortSignal.timeout(upload ? 60000 : 15000)
       });
       const outputHeaders = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };
+      if (upstream.headers.get('content-type')?.split(';')[0] === 'application/pdf') {
+        outputHeaders['Content-Type'] = 'application/pdf';
+        outputHeaders['Content-Disposition'] = upstream.headers.get('content-disposition') || 'attachment; filename="document.pdf"';
+      }
       const cookies = upstream.headers.getSetCookie();
       if (cookies.length) outputHeaders['Set-Cookie'] = cookies;
       const outputBody = request.method === 'HEAD' ? undefined : Buffer.from(await upstream.arrayBuffer());
@@ -95,5 +104,5 @@ const server = createServer(async (request, response) => {
   } catch { response.writeHead(404); response.end(); }
 });
 server.listen(Number(process.env.PORT || 3000), '0.0.0.0', () => {
-  console.log('ERP Core Web listening on port ' + (process.env.PORT || 3000));
+  console.log('ERP Core Web listening on port ' + server.address().port);
 });

@@ -48,6 +48,12 @@ passed. Formal contract/evidence acceptance and GST business UAT remain pending.
 Staging API v16 / UI v11 deployed source a47329c5 and passed public health checks;
 the public UI serves v0.6.9. Pre-release PostgreSQL backup succeeded (220 KB).
 
+v0.6.10 adds private project PDF upload/download and primary contract
+draft/document/submission/internal approval/return. 199 local checks passed.
+Next: billing-plan reconciliation and activation conditions, signed evidence,
+contract activation/project execution stage, then formal milestone acceptance.
+See `PROJECT_EVIDENCE_CONTRACTS.md`. Business UAT remains with the GST owner.
+
 **Do not continue to 0006 until the Local Integration Gate passes.**
 
 ## Phase 1 - Local Integration Gate (Windows)

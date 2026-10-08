@@ -65,7 +65,7 @@ try{
   check((await post(base+`/milestones/${m.id}/progress`,{...progress,expectedUpdatedAt:m.updatedAt,actualEnd:'2026-10-08'})).statusCode,409);
   check((await post(base+`/milestones/${m.id}/accept`,{})).statusCode,404);
   detail=(await request('GET',base+'/execution')).json();
-  check(detail.acceptance,{implemented:false,projectInExecution:false,activeMainContract:false,evidenceWorkflowAvailable:false});
+  check(detail.acceptance,{implemented:false,projectInExecution:false,activeMainContract:false,evidenceWorkflowAvailable:true});
   const contract=await prisma.contract.create({data:{companyId:c.id,partnerId:partner.id,contractCode:'CON',contractName:'Fixture',businessType:'PROJECT',contractType:'MAIN',valueType:'FIXED',status:'ACTIVE'}});
   await prisma.projectContract.create({data:{companyId:c.id,projectId:p.id,contractId:contract.id,role:'MAIN'}});
   await prisma.project.update({where:{id:p.id},data:{status:'IN_PROGRESS'}});

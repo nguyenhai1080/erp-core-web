@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma, Prisma } from '@erp/db';
 import { projectAccessWhere, requirePermission, type AuthConfig } from '../auth/access.js';
 import { audit, code, CommandError, currency, date, money, parse, project, text, timestamp, unchanged, writeGuard } from './commands.js';
+import { evidenceRoutes } from './evidence.js';
 const projectId = (input: unknown) => parse(z.object({ id: z.uuid() }), input).id;
 const childIds = (input: unknown) => parse(z.object({ id: z.uuid(), child: z.uuid() }), input);
 const budgetSchema = z.object({ currency, amount: money, reason: text, expectedRevisionNo: z.number().int().min(0) }).strict();
@@ -55,6 +56,14 @@ export async function projectRoutes(app: FastifyInstance, config: AuthConfig) {
       const budgets = can('COST_BUDGET_VIEW') ? await tx.projectCostBudget.findMany({ where: scope, orderBy: [{ revisionNo: 'desc' }, { id: 'desc' }], take: 100 }) : [];
       const actuals = can('COST_VIEW') ? await tx.projectCostEntry.groupBy({ by: ['currency'], where: { ...scope, status: 'APPROVED' }, _sum: { amount: true } }) : [];
       const current = can('COST_BUDGET_VIEW') ? await tx.projectCostBudget.findMany({ where: { ...scope, isCurrent: true } }) : [];
+      const documents = await tx.document.findMany({ where: { companyId: user.companyId, entityType: 'Project', entityId: id, status: 'ACTIVE',
+          documentType: { in: ['OTHER', ...(can('CONTRACT_VIEW') ? ['CONTRACT'] : []), ...(can('MILESTONE_VIEW') ? ['MILESTONE_EVIDENCE'] : [])] } },
+        orderBy: [{ createdAt: 'desc' },{ id: 'desc' }], take: 100, select: { id: true, documentCode: true, documentType: true,
+          documentNumber: true, createdAt: true, attachment: { select: { originalFilename: true, fileSize: true } } } });
+      const contracts = can('CONTRACT_VIEW') ? await tx.contract.findMany({ where: { companyId: user.companyId,
+        projectLinks: { some: { companyId: user.companyId, projectId: id } } }, orderBy: [{ createdAt: 'desc' },{ id: 'desc' }], take: 100,
+        select: { id: true, contractCode: true, contractName: true, contractNumber: true, status: true, currency: true,
+          baseContractValue: true, officialDocumentId: true, updatedAt: true } }) : [];
       const totals = [...new Set([...actuals.map(v => v.currency), ...current.map(v => v.currency)])].sort().map(currency => {
         const actual = new Prisma.Decimal(actuals.find(v => v.currency === currency)?._sum.amount ?? 0); const budget = current.find(v => v.currency === currency);
         return { currency, approvedCost: can('COST_VIEW') ? actual.toFixed(4) : null, budget: budget?.amount.toFixed(4) ?? null,
@@ -65,9 +74,10 @@ export async function projectRoutes(app: FastifyInstance, config: AuthConfig) {
         projectInExecution: ['IN_PROGRESS','UAT'].includes(item.status),
         activeMainContract: can('CONTRACT_VIEW') ? !!await tx.projectContract.findFirst({ where: { companyId: user.companyId, projectId: id,
           role: 'MAIN', contract: { companyId: user.companyId, status: 'ACTIVE' } } }) : null,
-        evidenceWorkflowAvailable: false
+        evidenceWorkflowAvailable: true
       } : null;
-      return { item, milestones, costs, budgets, currentBudgets: current, totals, acceptance, limit: 100 };
+      return { item, milestones, costs, budgets, currentBudgets: current, totals, acceptance, contracts,
+        documents: documents.map(d => ({ ...d, attachment: { ...d.attachment, fileSize: d.attachment.fileSize?.toString() } })), limit: 100 };
     }, { isolationLevel: 'RepeatableRead' });
   });
   app.post('/api/v1/projects/:id/budgets', { preHandler: writeGuard('COST_BUDGET_REVISE', config) }, async (request, reply) => {
@@ -149,4 +159,5 @@ export async function projectRoutes(app: FastifyInstance, config: AuthConfig) {
         return { item };
       });
     });
+  await app.register(evidenceRoutes, config);
 }

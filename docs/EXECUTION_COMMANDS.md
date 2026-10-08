@@ -1,5 +1,8 @@
 # Project execution workspace — v0.6.9
 
+v0.6.10 adds project PDF evidence and contract preparation; see
+`PROJECT_EVIDENCE_CONTRACTS.md`. Formal milestone acceptance remains closed.
+
 GST owner login is verified. v0.6.8 added the initial 0006 command/UI slice;
 v0.6.9 adds milestone return/cancellation. Formal milestone acceptance,
 contract/evidence workflows and business UAT
