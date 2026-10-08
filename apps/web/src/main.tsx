@@ -7,7 +7,7 @@ import { Services } from './Services';
 
 type Identity = { userId: string; companyId: string; companyCode: string; fullName: string; email: string; permissions: string[] };
 type Session = { user: Identity; csrfToken: string };
-const version = '0.6.12';
+const version = '0.6.13';
 document.title = `ERP Core Web · v${version}`;
 async function api(path: string, body?: unknown, csrf?: string) {
   const response = await fetch('/api/v1' + path, {
@@ -81,13 +81,13 @@ function App() {
     <button className="text-button" onClick={() => changeMode(!setup)} disabled={busy}>{setup ? 'Quay lại đăng nhập' : 'Thiết lập quản trị lần đầu'}</button>
     <footer><span role="status">{health}</span><span>v{version} · Staging</span></footer>
   </section></main>;
-  return <div className="shell"><aside><h2>ERP Core</h2>
-    <button className={'nav ' + (page === 'dashboard' ? 'active' : '')} onClick={() => { setPage('dashboard'); setMessage(''); }}>Tổng quan</button>
-    {session.user.permissions.includes('PROJECT_VIEW') && <button className={'nav ' + (page === 'projects' ? 'active' : '')} onClick={() => setPage('projects')}>Dự án</button>}
-    {session.user.permissions.includes('PARTNER_VIEW') && <button className={'nav ' + (page === 'partners' ? 'active' : '')} onClick={() => setPage('partners')}>Đối tác</button>}
-    {session.user.permissions.includes('SERVICE_VIEW') && <button className={'nav ' + (page === 'services' ? 'active' : '')} onClick={() => setPage('services')}>Dịch vụ</button>}
-    <div className="nav muted">Các chức năng khác sẽ được bổ sung</div>
-  </aside><main><header><div><h1>{page === 'projects' ? 'Dự án' : page === 'partners' ? 'Đối tác' : page === 'services' ? 'Dịch vụ' : 'Tổng quan'}</h1><p className="muted">{session.user.companyCode} · {session.user.fullName}</p></div><button onClick={logout} disabled={busy}>Đăng xuất</button></header>
+  return <div className="shell"><aside><h2>ERP Core</h2><p className="sidebar-subtitle">Hệ thống quản lý công việc và tài chính<br/>{session.user.companyCode}</p><div className="nav-title">QUẢN LÝ</div><nav className="sidebar-nav" aria-label="Quản lý ERP">
+    <button className={'nav ' + (page === 'dashboard' ? 'active' : '')} aria-current={page==='dashboard'?'page':undefined} onClick={() => { setPage('dashboard'); setMessage(''); }}>Dashboard</button>
+    {session.user.permissions.includes('SERVICE_VIEW') && <button className={'nav ' + (page === 'services' ? 'active' : '')} aria-current={page==='services'?'page':undefined} onClick={() => setPage('services')}>Quản lý Dịch vụ</button>}
+    {session.user.permissions.includes('PARTNER_VIEW') && <button className={'nav ' + (page === 'partners' ? 'active' : '')} aria-current={page==='partners'?'page':undefined} onClick={() => setPage('partners')}>Quản lý Đối tác</button>}
+    {session.user.permissions.includes('PROJECT_VIEW') && <button className={'nav ' + (page === 'projects' ? 'active' : '')} aria-current={page==='projects'?'page':undefined} onClick={() => setPage('projects')}>Quản lý Dự án</button>}
+    </nav><div className="sidebar-footer">ERP Core · v{version}</div>
+  </aside><main><header><div><h1>{page === 'projects' ? 'Quản lý Dự án' : page === 'partners' ? 'Quản lý Đối tác' : page === 'services' ? 'Quản lý Dịch vụ' : 'Dashboard'}</h1><p className="lead">{page==='services'?'Xem danh sách dịch vụ, thêm mới và cập nhật bằng popup nhập liệu.':page==='partners'?'Quản lý hồ sơ đối tác đầu vào và đầu ra.':page==='projects'?'Theo dõi tiến độ, ngân sách và chi phí dự án.':'Tổng quan hệ thống ERP và công ty.'}</p></div><div className="top-user"><div><p>{session.user.fullName}</p><p className="muted">{session.user.companyCode} · {session.user.email}</p></div><button onClick={logout} disabled={busy}>Đăng xuất</button></div></header>
     {message && <p className="notice" role="alert">{message}</p>}
     {page === 'dashboard' ? <><section className="cards"><article><b>Kết nối</b><p>{health}</p><a href="/api/v1/health" target="_blank" rel="noreferrer">Kiểm tra kết nối</a></article><article><b>Công ty</b><p>{session.user.companyCode}</p></article><article><b>Môi trường</b><p>v{version} · Staging</p></article></section><section className="panel"><h3>Chào {session.user.fullName}</h3><p>Mở Dịch vụ và Đối tác để quản lý danh mục kế thừa DGC; Dự án là phần mở rộng của ERP Core.</p></section></> : page === 'services' ? <Services permissions={session.user.permissions} csrf={session.csrfToken} request={api}/> : page === 'partners' ? <Partners permissions={session.user.permissions} csrf={session.csrfToken} request={api}/> : <Execution permissions={session.user.permissions} csrf={session.csrfToken} request={api}/>}
   </main></div>;
