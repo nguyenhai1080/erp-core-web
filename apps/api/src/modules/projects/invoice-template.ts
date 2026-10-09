@@ -98,7 +98,7 @@ export async function renderGstInvoice(data:InvoiceData,template:ReturnType<type
  rule(y+4);
  if(doc.getPageCount()>12)throw new CommandError(422,'Invoice vượt giới hạn 12 trang. Tách theo dịch vụ.');
  if(placement.page>doc.getPageCount())throw new CommandError(400,'Trang ký Invoice không tồn tại.');
- const signaturePage=doc.getPage(doc.getPageCount()-1),signatureLabel='GST VIET NAM',signatureLabelSize=8.5;
+ const signaturePage=doc.getPage(doc.getPageCount()-1),signatureLabel='For and on behalf of GST',signatureLabelSize=8.5;
  signaturePage.drawText(signatureLabel,{x:(placement.x+placement.width/2)*signaturePage.getWidth()-measure(signatureLabel,signatureLabelSize)/2,y:signaturePage.getHeight()*(1-placement.y)+12,size:signatureLabelSize,font:regular,color:accent});
  if(includeSigning){const sign=await image(doc,signing.bytes,signing.mime),target=doc.getPage(placement.page-1),top=placement.y*target.getHeight(),bottom=top+placement.width*target.getWidth()*sign.height/sign.width;
   // The last page owns the payment block; do not sign over any invoice content.
