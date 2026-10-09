@@ -72,7 +72,7 @@ export async function renderGstInvoice(data:InvoiceData,template:ReturnType<type
  metadataRow('No.:',data.invoiceNumber,24,11,bold,accent);
  metadataRow('DATE',date(data.invoiceDate),16);
  metadataRow('PAYMENT DUE BY:',date(data.dueDate),16);
- y-=13;field('TO:',data.partner.name.toUpperCase());field('Address:',data.partner.address);field('Business Registration No:',data.partner.registration);field('Tax Registration:',data.partner.tax);field('Attention:',data.partner.attn);field('Tel:',data.partner.phone??'');field('Contract No:',data.agreementNumbers.join('; '));y-=12;
+ y-=13;field('TO:',data.partner.name.toUpperCase());field('Address:',data.partner.address);field('Business Registration:',data.partner.registration);field('Tax Registration:',data.partner.tax);field('Attention:',data.partner.attn);field('Tel:',data.partner.phone??'');field('Contract No:',data.agreementNumbers.join('; '));y-=12;
  const cols=[left,left+32,left+362,left+416,left+474,right];
  const center=(s:string,a:number,b:number,yy:number,size=7.5,f=bold,color=ink)=>text(s,(a+b-measure(s,size,f))/2,yy,size,f,color);
  const heading=()=>{rule(y,.8,accent);y-=13;for(const [i,t] of ['No.','DESCRIPTION','AMOUNT','TAX','TOTAL'].entries()){if(i===1)text(t,cols[i]+7,y,7.5,bold);else center(t,cols[i],cols[i+1],y);}y-=7;rule(y);page.drawRectangle({x:left,y:y-19,width,height:19,color:tint});center('A',cols[2],cols[3],y-13,7.5,regular);center('B=A*10%',cols[3],cols[4],y-13,7.5,regular);center('C=A-B',cols[4],cols[5],y-13,7.5,regular);y-=19;};
