@@ -2,7 +2,7 @@ import AdmZip from 'adm-zip';
 import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import fontkit from '@pdf-lib/fontkit';
-import {PDFDocument,rgb} from 'pdf-lib';
+import {PDFDocument,rgb,StandardFonts} from 'pdf-lib';
 import {Prisma} from '@erp/db';
 import {CommandError} from './commands.js';
 import {drawPlacement,image,type Placement} from './financial-documents.js';
@@ -22,7 +22,7 @@ export function readGstTemplate(bytes:Buffer){
  }catch{throw new CommandError(409,'Template chưa khớp mẫu GST đã cung cấp (Invoice Feb 2019). Kiểm tra hoặc thay lại template GST gốc.');}
 }
 export type InvoiceLine={revenueId:string;serviceId:string;serviceName:string;groupServiceId:string;contractId:string;description:string;revenue:string;wht:string;payable:string;uploadId:string;lineNo:number};
-export type InvoiceData={invoiceNumber:string;invoiceDate:string;dueDate:string;period:string;paymentTermDays:number;companyName:string;companyCode:string;partner:{name:string;address:string;registration:string;tax:string;attn:string;email:string};lines:InvoiceLine[];totals:{revenue:string;wht:string;payable:string};amountInWords:string;agreementNumbers:string[]};
+export type InvoiceData={invoiceNumber:string;invoiceDate:string;dueDate:string;period:string;paymentTermDays:number;companyName:string;companyCode:string;partner:{name:string;address:string;registration:string;tax:string;attn:string;email:string;phone?:string};lines:InvoiceLine[];totals:{revenue:string;wht:string;payable:string};amountInWords:string;agreementNumbers:string[]};
 const D=(s:string)=>new Prisma.Decimal(s);
 export function usdWords(amount:string){
  const small=['Zero','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
@@ -44,32 +44,58 @@ export function fillGstWorkbook(template:Buffer,data:InvoiceData){
  zip.updateFile('xl/worksheets/sheet1.xml',Buffer.from(sheet));return zip.toBuffer();
 }
 export async function renderGstInvoice(data:InvoiceData,template:ReturnType<typeof readGstTemplate>,signing:{bytes:Buffer;mime:string|null},placement:Placement,includeSigning=true){
- const doc=await PDFDocument.create();doc.registerFontkit(fontkit);const font=await doc.embedFont(await readFile(fileURLToPath(new URL('../../../assets/fonts/NotoSans-Regular.ttf',import.meta.url))),{subset:true});
- let page=doc.addPage([595.28,841.89]);const black=rgb(.06,.12,.18),border=rgb(.6,.65,.7),left=40,right=555;
- const text=(s:string,x:number,y:number,size=10)=>page.drawText(s,{x,y,size,font,color:black});
- const wrap=(s:string,width:number,size=10)=>{const out:string[]=[];let line='';for(const word of s.split(/\s+/)){if(font.widthOfTextAtSize((line?line+' ':'')+word,size)>width&&line){out.push(line);line=word;}else line+=(line?' ':'')+word;}if(line)out.push(line);return out;};
- const block=(s:string,x:number,y:number,width:number,size=10)=>{const lines=wrap(s,width,size);for(const line of lines){text(line,x,y,size);y-=size+4;}return y;};
- const logo=await image(doc,template.logo,template.logoMime),ld=logo.scaleToFit(125,55);page.drawImage(logo,{x:right-ld.width,y:765,width:ld.width,height:ld.height});
- let y=block(data.companyName,left,802,365,12);y=block(template.address,left,y-4,360,9);text('Tax code: '+template.taxCode,left,y-3,9);text('Tel: '+template.phone,left,y-17,9);
- text('INVOICE',230,703,21);text('No.: '+data.invoiceNumber,320,675,11);text('Date: '+data.invoiceDate,320,658);text('Due date: '+data.dueDate,320,641);
- y=block('TO: '+data.partner.name,left,612,500,11);y=block(data.partner.address,left,y-2,500,9);
- text('Business registration: '+data.partner.registration,left,y-2,9);y-=18;text('Tax registration: '+data.partner.tax,left,y,9);y-=18;
- y=block('Attn: '+data.partner.attn+'   '+data.partner.email,left,y,500,9);y=block('Under the Agreement No.: '+data.agreementNumbers.join('; '),left,y-8,500,9);y-=18;
- const heading=()=>{page.drawRectangle({x:left,y:y-25,width:right-left,height:27,color:rgb(.94,.96,.98),borderWidth:.5,borderColor:border});text('DESCRIPTION',left+8,y-15,9);text('Revenue USD',337,y-15,9);text('WHT USD',419,y-15,9);text('Payable USD',484,y-15,9);y-=27;};heading();
- for(const line of data.lines){const desc=wrap(line.description,275,9),height=Math.max(30,desc.length*13+14);
-  if(y-height<335){page=doc.addPage([595.28,841.89]);text('INVOICE '+data.invoiceNumber+' · continued',left,795,12);y=765;heading();}
-  page.drawRectangle({x:left,y:y-height,width:right-left,height,borderWidth:.5,borderColor:border});for(let i=0;i<desc.length;i++)text(desc[i],left+8,y-18-i*13,9);
-  for(const [value,x] of [[line.revenue,399],[line.wht,475],[line.payable,547]] as const)text(value,x-font.widthOfTextAtSize(value,9),y-18,9);y-=height;
+ const doc=await PDFDocument.create();doc.registerFontkit(fontkit);
+ const unicode=await doc.embedFont(await readFile(fileURLToPath(new URL('../../../assets/fonts/NotoSans-Regular.ttf',import.meta.url))),{subset:true});
+ const regular=await doc.embedFont(StandardFonts.TimesRoman),bold=await doc.embedFont(StandardFonts.TimesRomanBold),italic=await doc.embedFont(StandardFonts.TimesRomanBoldItalic);
+ const pick=(s:string,f=regular)=>{try{f.encodeText(s);return f;}catch{return unicode;}};
+ let page=doc.addPage([595.28,841.89]);const left=31,right=563,width=right-left,ink=rgb(.20,.14,.12),accent=rgb(.65,.29,0),tint=rgb(.973,.96,.935);
+ const text=(s:string,x:number,y:number,size=7.5,f=regular,color=ink)=>page.drawText(s,{x,y,size,font:pick(s,f),color});
+ const measure=(s:string,size=7.5,f=regular)=>pick(s,f).widthOfTextAtSize(s,size);
+ const wrap=(s:string,w:number,size=7.5,f=regular)=>{const out:string[]=[];let line='';for(const word of s.replace(/\s+/g,' ').trim().split(' ')){if(measure((line?line+' ':'')+word,size,f)>w&&line){out.push(line);line=word;}else line+=(line?' ':'')+word;}if(line)out.push(line);return out;};
+ const block=(s:string,x:number,y:number,w:number,size=7.5,f=regular,color=ink)=>{for(const line of wrap(s,w,size,f)){text(line,x,y,size,f,color);y-=size+3;}return y;};
+ const rule=(y:number,weight=.5,color=ink)=>page.drawLine({start:{x:left,y},end:{x:right,y},thickness:weight,color});
+ const money=(s:string)=>D(s).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+ const date=(s:string)=>s.split('-').reverse().join('/');
+ const logo=await image(doc,template.logo,template.logoMime),ld=logo.scaleToFit(75,38);page.drawImage(logo,{x:right-ld.width-17,y:751,width:ld.width,height:ld.height});
+ let y=block(template.bank.beneficiary,left+2,792,430,12,regular,accent);
+ const field=(label:string,value:string)=>{text(label,left+2,y,7.5,bold);const valueX=left+Math.max(77,measure(label,7.5,bold)+6);y=block(value,valueX,y,right-valueX,7.5)-2;};
+ field('Address:',template.address);field('Tax Registration:',template.taxCode.replace(/^'/,''));field('Tel:',template.phone.replace(/'/g,''));
+ text('INVOICE',(595.28-measure('INVOICE',22))/2,720,22,regular,rgb(0,0,0));
+ y=702;rule(y,1.6);text('No.:',left+2,y-10,12);text(data.invoiceNumber,left+77,y-10,12,regular,accent);y-=15;rule(y,1.6);
+ text('DATE',left+2,y-9);text(date(data.invoiceDate),left+77,y-9);y-=13;rule(y);
+ text('PAYMENT DUE BY:',left+2,y-9);text(date(data.dueDate),left+77,y-9);y-=13;rule(y);
+ y-=13;field('TO:',data.partner.name.toUpperCase());field('Address:',data.partner.address);field('Business Registration No:',data.partner.registration);field('Tax Registration:',data.partner.tax);field('Attention:',data.partner.attn);field('Tel:',data.partner.phone??'');field('Contract No:',data.agreementNumbers.join('; '));y-=12;
+ const cols=[left,left+86,left+362,left+416,left+474,right];
+ const center=(s:string,a:number,b:number,yy:number,size=7.5,f=bold,color=ink)=>text(s,(a+b-measure(s,size,f))/2,yy,size,f,color);
+ const heading=()=>{rule(y,1.7);y-=13;for(const [i,t] of ['No.','DESCRIPTION','AMOUNT','TAX','TOTAL'].entries())text(t,cols[i]+2,y,7.5,bold);y-=7;rule(y,.5,accent);page.drawRectangle({x:left,y:y-19,width,height:19,color:tint});center('A',cols[2],cols[3],y-13);center('B=A*10%',cols[3],cols[4],y-13);center('C=A-B',cols[4],cols[5],y-13);y-=19;};
+ heading();
+ const monthName=new Date(data.period+'-01T00:00:00Z').toLocaleString('en-US',{month:'long',timeZone:'UTC'})+' '+data.period.slice(0,4);
+ for(const [index,line] of data.lines.entries()){
+  const desc=wrap('Sharing revenue for '+line.serviceName+' in '+monthName,cols[2]-cols[1]-12,7.5,bold),height=Math.max(19,desc.length*10.5+8);
+  if(y-height<300){page=doc.addPage([595.28,841.89]);text('INVOICE '+data.invoiceNumber+' - continued',left,794,12);y=772;heading();}
+  if(index%2===1)page.drawRectangle({x:left,y:y-height,width,height,color:tint});
+  text(String(index+1),left+11,y-12);desc.forEach((d,i)=>text(d,cols[1]+2,y-12-i*10.5,7.5,bold));
+  [line.revenue,line.wht,line.payable].forEach((v,i)=>center(money(v),cols[i+2],cols[i+3],y-12,7.5,bold));y-=height;
  }
- const paymentRows=[['Beneficiary',template.bank.beneficiary],['Bank',template.bank.bankName],['Bank address',template.bank.bankAddress],['Account',template.bank.account],['SWIFT',template.bank.swift],['Payment reference',data.invoiceNumber]];
- const footerHeight=22+63+wrap('In words: '+data.amountInWords,500,10).length*14+5+32+paymentRows.reduce((sum,[label,value])=>sum+wrap(label+': '+value,500,9).length*13+3,0);
- if(y-footerHeight<150){page=doc.addPage([595.28,841.89]);text('INVOICE '+data.invoiceNumber+' · totals and payment details',left,795,12);y=760;}
- y-=22;for(const [label,value] of [['Revenue USD',data.totals.revenue],['Withholding tax USD',data.totals.wht],['Net payable USD',data.totals.payable]]){text(label,325,y,10);text(value,right-font.widthOfTextAtSize(value,11),y,11);y-=21;}
- y=block('In words: '+data.amountInWords,left,y-5,500,10);y-=12;text('Payment details',left,y,11);y-=20;
- for(const [label,value] of paymentRows){y=block(label+': '+value,left,y,500,9)-3;}
- if(y<150)throw new CommandError(422,'Thông tin Invoice quá dài cho vùng thanh toán/chữ ký. Rút gọn mô tả hoặc tách theo dịch vụ.');
- text('Authorized signature and company stamp',left,133,10);
+ const banks=[['Name of Beneficiary:',template.bank.beneficiary],['Name of Bank:',template.bank.bankName],['Address of Bank:',template.bank.bankAddress],['Account Number:',template.bank.account.replace(/^'/,'')],['SWIFT Code',template.bank.swift],['Payment Reference:',data.invoiceNumber]];
+ const words='In word: '+data.amountInWords;
+ const footerHeight=45+wrap(words,width-8,7.5,italic).length*10.5+banks.reduce((n,[,value])=>n+Math.max(1,wrap(value,width-77,7.5).length)*10.5+3,0)+22;
+ if(y-footerHeight<140){page=doc.addPage([595.28,841.89]);text('INVOICE '+data.invoiceNumber+' - totals and payment details',left,794,12);y=771;}
+ page.drawRectangle({x:cols[2],y:y-19,width:right-cols[2],height:19,color:tint});
+ text('The remaining amount (USD)',cols[2]-measure('The remaining amount (USD)',7.5,bold)-3,y-12,7.5,bold,accent);
+ [data.totals.revenue,data.totals.wht,data.totals.payable].forEach((v,i)=>center(money(v),cols[i+2],cols[i+3],y-12,7.5,bold));y-=28;
+ for(const line of wrap(words,width-8,7.5,italic)){center(line,left,right,y,7.5,italic,accent);y-=10.5;}
+ rule(y+5,1.5);text('PAYMENT DETAILS',left+2,y-4,8.5,bold,accent);y-=18;
+ for(const [label,value] of banks){text(label,left+2,y,7.5,bold);y=block(value,left+77,y,width-77,7.5)-3;}
+ rule(y+4);text('GST VIET NAM',right-235,y-27,9);
  if(doc.getPageCount()>12)throw new CommandError(422,'Invoice vượt giới hạn 12 trang. Tách theo dịch vụ.');
- if(placement.page>doc.getPageCount())throw new CommandError(400,'Trang ký Invoice không tồn tại.');if(includeSigning)drawPlacement(doc.getPage(placement.page-1),await image(doc,signing.bytes,signing.mime),placement);
+ if(placement.page>doc.getPageCount())throw new CommandError(400,'Trang ký Invoice không tồn tại.');
+ if(includeSigning){const sign=await image(doc,signing.bytes,signing.mime),target=doc.getPage(placement.page-1),top=placement.y*target.getHeight(),bottom=top+placement.width*target.getWidth()*sign.height/sign.width;
+  // The last page owns the payment block; do not sign over any invoice content.
+  if(placement.page===doc.getPageCount()&&top<target.getHeight()-y+33)throw new CommandError(400,'Ảnh ký đè lên nội dung Invoice. Di chuyển ảnh xuống dưới phần thanh toán.');
+  if(placement.page<doc.getPageCount())throw new CommandError(400,'Chọn trang cuối có phần thanh toán để ký Invoice.');
+  if(bottom>target.getHeight()-15)throw new CommandError(400,'Ảnh ký nằm ngoài vùng cuối trang. Giảm kích thước ảnh.');
+  drawPlacement(target,sign,placement);
+ }
  doc.setTitle('Invoice '+data.invoiceNumber);return Buffer.from(await doc.save({useObjectStreams:false}));
 }
