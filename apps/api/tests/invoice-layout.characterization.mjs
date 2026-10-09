@@ -9,6 +9,7 @@ const signing={bytes:png,mime:'image/png'},placement={page:1,x:.56,y:.74,width:.
 assert.equal((await PDFDocument.load(await renderGstInvoice(data,profile,signing,placement))).getPageCount(),1);
 await assert.rejects(renderGstInvoice(data,profile,signing,{...placement,y:.3}),e=>e.statusCode===400);
 await assert.rejects(renderGstInvoice(data,profile,signing,{...placement,y:.95}),e=>e.statusCode===400);
+const blank={...data,partner:{...data.partner,registration:'',tax:'',attn:'',phone:''}};assert.equal((await PDFDocument.load(await renderGstInvoice(blank,profile,signing,placement))).getPageCount(),1);
 const many={...data,lines:Array.from({length:40},(_,i)=>data.lines[i%5])};
 assert.ok((await PDFDocument.load(await renderGstInvoice(many,profile,signing,placement,false))).getPageCount()>1);
 await assert.rejects(renderGstInvoice(many,profile,signing,placement),e=>e.statusCode===400);

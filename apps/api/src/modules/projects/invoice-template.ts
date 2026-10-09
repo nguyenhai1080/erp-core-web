@@ -52,7 +52,7 @@ export async function renderGstInvoice(data:InvoiceData,template:ReturnType<type
  const text=(s:string,x:number,y:number,size=7.5,f=regular,color=ink)=>page.drawText(s,{x,y,size,font:pick(s,f),color});
  const measure=(s:string,size=7.5,f=regular)=>pick(s,f).widthOfTextAtSize(s,size);
  const wrap=(s:string,w:number,size=7.5,f=regular)=>{const out:string[]=[];let line='';for(const word of s.replace(/\s+/g,' ').trim().split(' ')){if(measure((line?line+' ':'')+word,size,f)>w&&line){out.push(line);line=word;}else line+=(line?' ':'')+word;}if(line)out.push(line);return out;};
- const block=(s:string,x:number,y:number,w:number,size=7.5,f=regular,color=ink)=>{for(const line of wrap(s,w,size,f)){text(line,x,y,size,f,color);y-=size+3;}return y;};
+ const block=(s:string,x:number,y:number,w:number,size=7.5,f=regular,color=ink)=>{const lines=wrap(s,w,size,f);if(!lines.length)lines.push('');for(const line of lines){text(line,x,y,size,f,color);y-=size+3;}return y;};
  const rule=(y:number,weight=.5,color=ink)=>page.drawLine({start:{x:left,y},end:{x:right,y},thickness:weight,color});
  const money=(s:string)=>D(s).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
  const date=(s:string)=>s.split('-').reverse().join('/');
