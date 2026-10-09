@@ -44,7 +44,7 @@ try {
   const bytes=await request('GET',download(current.id));check(bytes.rawPayload,png);check(bytes.headers['content-type'],'image/png');check(bytes.headers['cache-control'],'no-store');
   check((await post(body())).statusCode,409);check((await post(body({expectedCurrentId:current.id}))).statusCode,409);
   const races=await Promise.all([post(body({expectedCurrentId:current.id,base64:png2.toString('base64')})),post(body({expectedCurrentId:current.id,base64:jpeg.toString('base64'),filename:'new.jpg'}))]);
-  check(races.map(r=>r.statusCode).sort(),[201,409]);
+  check(races.map(r=>r.statusCode).sort(),[201,429]);
   let list=(await request('GET',base)).json().items;check(list.length,2);check(list.filter(i=>i.status==='ACTIVE').length,1);check(list.find(i=>i.id===current.id).status,'SUPERSEDED');check((await request('GET',download(current.id))).rawPayload,png);
   check((await readdir(resolve(storage,'company-assets',company.id))).length,2);
   const foreign=await prisma.document.create({data:{companyId:other.id,documentCode:'FOREIGN',documentType:'COMPANY_LOGO',entityType:'CompanyAsset',entityId:other.id,attachmentId:(await prisma.document.findUnique({where:{id:current.id}})).attachmentId}});
@@ -55,13 +55,18 @@ try {
   const zip=new AdmZip();zip.addFile('[Content_Types].xml',Buffer.from('<Types><Override ContentType="application/vnd.ms-excel.sheet.macroEnabled.main+xml"/></Types>'));zip.addFile('xl/workbook.xml',Buffer.from('<workbook><sheets><sheet name="Synthetic"/></sheets></workbook>'));zip.addFile('xl/vbaProject.bin',Buffer.from('fixture-only-never-executed'));const template=zip.toBuffer();
   const templateResponse=await post(body({kind:'INVOICE_TEMPLATE',filename:'fixture.xlsm',base64:template.toString('base64')}));check(templateResponse.statusCode,201);const templateId=templateResponse.json().item.id;
   check((await request('GET',download(templateId))).rawPayload,template);
+  zip.updateFile('xl/vbaProject.bin',Buffer.from('second-fixture-only-never-executed'));const template2=zip.toBuffer();
+  const templateRaces=await Promise.all([post(body({kind:'INVOICE_TEMPLATE',filename:'fixture.xlsm',expectedCurrentId:templateId,base64:template2.toString('base64')})),post(body({kind:'INVOICE_TEMPLATE',filename:'fixture.xlsm',expectedCurrentId:templateId,base64:template2.toString('base64')}))]);
+  check(templateRaces.map(r=>r.statusCode).sort(),[201,409]);
+  check((await request('GET',base)).json().items.filter(i=>i.kind==='INVOICE_TEMPLATE'&&i.status==='ACTIVE').length,1);
+  check((await request('GET',download(templateId))).rawPayload,template);
   check((await post(body({kind:'INVOICE_TEMPLATE',filename:'fixture.xlsx',base64:template.toString('base64')}))).statusCode,400);
   check((await post(body({kind:'INVOICE_TEMPLATE',filename:'fixture.xlsm',base64:png.toString('base64')}))).statusCode,400);
   const largeZip=new AdmZip();largeZip.addFile('large.bin',Buffer.alloc(51*1024*1024));check((await post(body({kind:'INVOICE_TEMPLATE',filename:'bomb.xlsm',base64:largeZip.toBuffer().toString('base64')}))).statusCode,400);
   await prisma.rolePermission.delete({where:{roleId_permissionId:{roleId:role.id,permissionId:permission.id}}});
   for(const [method,path,payload] of [['GET',base],['GET',download(current.id)],['POST',base,body()]])check((await request(method,path,payload)).statusCode,403);
   await prisma.rolePermission.create({data:{roleId:role.id,permissionId:permission.id}});
-  const audit=await prisma.auditLog.findFirst({where:{companyId:company.id,action:'COMPANY_ASSET_UPLOAD'}});check(audit.userId,user.id);check('base64' in audit.newValue,false);check(await prisma.auditLog.count({where:{companyId:company.id,action:'COMPANY_ASSET_UPLOAD'}}),3);
+  const audit=await prisma.auditLog.findFirst({where:{companyId:company.id,action:'COMPANY_ASSET_UPLOAD'}});check(audit.userId,user.id);check('base64' in audit.newValue,false);check(await prisma.auditLog.count({where:{companyId:company.id,action:'COMPANY_ASSET_UPLOAD'}}),4);
   // Real web proxy: large upload and original binary MIME/bytes survive the UI hop.
   const address=await app.listen({host:'127.0.0.1',port:0});proxy=spawn(process.execPath,[resolve('../../apps/web/server.mjs')],{env:{...process.env,PORT:'0',API_BASE_URL:address},stdio:['ignore','pipe','pipe']});
   const port=await new Promise((res,rej)=>{const timer=setTimeout(()=>rej(new Error('Proxy timeout')),10000);proxy.once('error',rej);proxy.stdout.on('data',chunk=>{const found=String(chunk).match(/listening on port (\d+)/)?.[1];if(found){clearTimeout(timer);res(found);}});});const proxyBase='http://127.0.0.1:'+port;config.appOrigin=proxyBase;
