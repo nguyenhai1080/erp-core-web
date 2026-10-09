@@ -56,7 +56,7 @@ export async function renderGstInvoice(data:InvoiceData,template:ReturnType<type
  const rule=(y:number,weight=.5,color=ink)=>page.drawLine({start:{x:left,y},end:{x:right,y},thickness:weight,color});
  const money=(s:string)=>D(s).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
  const date=(s:string)=>s.split('-').reverse().join('/');
- const logo=await image(doc,template.logo,template.logoMime),ld=logo.scaleToFit(75,38);page.drawImage(logo,{x:right-ld.width-17,y:751,width:ld.width,height:ld.height});
+ const logo=await image(doc,template.logo,template.logoMime),ld=logo.scaleToFit(130,52);page.drawImage(logo,{x:right-ld.width,y:800-ld.height,width:ld.width,height:ld.height});
  let y=block(template.bank.beneficiary,left+2,792,430,12,regular,accent);
  const field=(label:string,value:string)=>{text(label,left+2,y,7.5,bold);const valueX=left+Math.max(77,measure(label,7.5,bold)+6);y=block(value,valueX,y,right-valueX,7.5)-2;};
  field('Address:',template.address);field('Tax Registration:',template.taxCode.replace(/^'/,''));field('Tel:',template.phone.replace(/'/g,''));
