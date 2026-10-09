@@ -6,7 +6,7 @@ import {CommandError} from './commands.js';
 // Values remain decimal strings across JSON; never round already-rounded USD intermediates.
 export const fields=['totalServiceRevenue','ivaTax','serviceRevenueForSharing','remunerationProvider','wht','partnerRevenue'] as const;
 export type Amounts=Record<typeof fields[number],string>;
-export type Detail=Amounts & {lineNo:number;serviceName:string;costDeduction:string;sharingRate:string;distributionRatio:string;usd:Amounts;rowType:'TOTAL'|'CHILD'};
+export type Detail=Amounts & {lineNo:number;serviceName:string;costDeduction:string;sharingRate:string;distributionRatio:string;ratesMissing?:boolean;usd:Amounts;rowType:'TOTAL'|'CHILD'};
 export type Financial={version:1;source:string;exchangeRate:string|null;details:Detail[];mzn:Amounts|null;usd:Amounts|null;warnings:string[];errors:string[];ready:boolean;manual?:{reason:string;changes:{lineNo:number;before:string;after:string}[]}};
 const D=(v:string|number)=>new Prisma.Decimal(v);
 const r=(v:Prisma.Decimal)=>v.toDecimalPlaces(2,Prisma.Decimal.ROUND_HALF_UP).toFixed(2);
@@ -62,10 +62,21 @@ export function parseReconFinancial(raw:string):Financial{
  const legacy=historical(text,errors,warnings);
  if(legacy){fx=legacy.fx;source='HISTORICAL_MOVTV';s={MZN:legacy.a,USD:convert(legacy.a,fx)};details=[detail(legacy.a,'MOVTV',1,fx,'0.00','.40','.47')];}
  if(!legacy&&fx){
-  const row=new RegExp('(?:^|\\s)(\\d{1,3})\\s+([A-Z][A-Z0-9_() /-]{1,60}?)\\s+('+moneyPattern+')\\s+('+moneyPattern+')\\s+('+moneyPattern+')\\s+('+moneyPattern+')\\s+(\\d+(?:\\.\\d+)?)%\\s+(\\d+(?:\\.\\d+)?)%\\s+('+moneyPattern+')\\s+('+moneyPattern+')\\s+('+moneyPattern+')(?=\\s|$)','gi');
-  for(const m of text.matchAll(row)){
-   const a=summary([m[3],m[4],m[6],m[9],m[10],m[11]].map(v=>r(n(v))));details.push(detail(a,m[2],Number(m[1]),fx,r(n(m[5])),n(m[7]).div(100).toFixed(),n(m[8]).div(100).toFixed()));
+  // DGC v61 grouped/row-number parsers accept seven money columns and optional
+  // rates, including OCR that drops percent signs. Never consume summary/footer rows.
+  const table=text.split(/\bIn\s+(?:MZN|USD)\b|The\s+Total/i)[0];
+  const row=new RegExp('(?:^|\\s)(\\d{1,3})\\s+([A-Z][A-Z0-9_() /-]{1,60}?)\\s+('+moneyPattern+')\\s+('+moneyPattern+')\\s+('+moneyPattern+')\\s+('+moneyPattern+')(?:\\s+(\\d+(?:\\.\\d+)?)%?\\s+(\\d+(?:\\.\\d+)?)%?)?\\s+('+moneyPattern+')\\s+('+moneyPattern+')\\s+('+moneyPattern+')(?=\\s+(?:\\d{1,3}\\s+[A-Z]|$)|$)','gi');
+  for(const m of table.matchAll(row)){
+   const a=summary([m[3],m[4],m[6],m[9],m[10],m[11]].map(v=>r(n(v))));
+   const missing=!m[7]||!m[8];
+   if(!missing&&(n(m[7]).gt(100)||n(m[8]).gt(100)))errors.push('Tỷ lệ chia sẻ/phân phối vượt 100% ở '+m[2]+'.');
+   const d=detail(a,m[2],Number(m[1]),fx,r(n(m[5])),missing?'0':n(m[7]).div(100).toFixed(),missing?'0':n(m[8]).div(100).toFixed());
+   if(missing){d.ratesMissing=true;source='DGC_OPTIONAL_RATE_ROWS';warnings.push('Không đọc được hai tỷ lệ ở '+d.serviceName+'; giữ các khoản tiền gốc, không suy đoán tỷ lệ.');}
+   else if(!m[0].includes('%'))source='DGC_OPTIONAL_RATE_ROWS';
+   details.push(d);
   }
+  const numberedRows=[...table.matchAll(new RegExp('(?:^|\\s)\\d{1,3}\\s+([A-Z][A-Z0-9_() /-]{1,60}?)\\s+(?='+moneyPattern+')','gi'))];
+  if(numberedRows.length!==details.length)errors.push('Có dòng dịch vụ chưa đọc đủ cột tiền; không thay bằng bảng tổng.');
   const bundle=/VOICEMAIL/i.test(text)&&/\bISIGN\b/i.test(text)&&/\bMCA\b/i.test(text)&&/MCAVM|ISIGN/i.test(p.service);
   if(!details.length&&!bundle){
    const sharing=tokens(segment(text,/Service\s+sharing/i,[/deduction/i,/Cost\s+or\s+Excluding/i,/IVA\s+Tax/i]))[0];

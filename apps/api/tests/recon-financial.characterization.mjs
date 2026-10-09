@@ -29,6 +29,21 @@ let checks=0;const check=(a,b)=>{assert.deepEqual(a,b);checks++;};
 check(parseReconIdentity(singleText).service,'TESTSERVICE');check(englishMoneyWords('Six thousands Eight hundreds Seventy Dollars and Seventy Five Cents'),'6870.75');
 const a=parseReconFinancial(singleText);check(a.errors,[]);check(a.ready,true);check(a.details.length,1);check(a.details[0].rowType,'TOTAL');check(a.usd.remunerationProvider,'1.55');check(a.usd.wht,'0.16');check(a.usd.partnerRevenue,'1.40');check(a.details[0].usd.partnerRevenue,'1.40');
 const b=parseReconFinancial(bundleText);check(b.errors,[]);check(b.ready,true);check(b.details.map(d=>d.rowType),['CHILD','CHILD','CHILD','TOTAL']);check(b.details.at(-1).usd.partnerRevenue,'4.19');check(b.details[0].usd.partnerRevenue,'1.40');
+// DGC v61 optional-rate rows: amounts remain authoritative; absent rates are
+// disclosed, never fabricated or silently displayed as a contractual 0%.
+const absentRates=bundleText.replaceAll('10.00% 100.00% ','');
+const absent=parseReconFinancial(absentRates);
+check(absent.ready,true);check(absent.source,'DGC_OPTIONAL_RATE_ROWS');
+check(absent.details.length,4);check(absent.details.slice(0,3).every(d=>d.ratesMissing),true);
+check(absent.mzn,b.mzn);check(absent.usd,b.usd);check(absent.warnings.length,3);
+const droppedSigns=parseReconFinancial(bundleText.replaceAll('%',''));
+check(droppedSigns.ready,true);check(droppedSigns.mzn,b.mzn);
+check(droppedSigns.details[0].sharingRate,'0.1');check(droppedSigns.details[0].distributionRatio,'1');
+check(parseReconFinancial(absentRates.replace('100.00 10.00 90.00','100.00 11.00 90.00')).ready,false);
+check(parseReconFinancial(absentRates.replace('3 MCA 1,160.00','3 MCA 9,160.00')).ready,false);
+check(parseReconFinancial(singleText.replace('10.00% 100.00% ','').replace('100.00 10.00 90.00','100.00 90.00')).ready,false);
+check(parseReconFinancial(bundleText.replaceAll('100.00%','101.00%')).ready,false);
+check(parseReconFinancial(bundleText.replace(/3 MCA.*\n/,'')+'\n3 MCA 1,160.00 160.00 0.00 1,000.00 10.00% 100.00% 100.00 10.00 90.00').ready,false);
 const edited=correctFinancial(b,[{lineNo:1,revenueMzn:'200'}],'Synthetic verified correction');check(edited.details[0].wht,'20.00');check(edited.details[0].partnerRevenue,'180.00');check(edited.mzn.remunerationProvider,'400.00');check(edited.mzn.wht,'40.00');check(edited.usd.partnerRevenue,'5.58');check(edited.details.at(-1).usd.partnerRevenue,'5.58');
 check(correctFinancial(a,[{lineNo:1,revenueMzn:'100.00'}],'unchanged').usd.partnerRevenue,'1.40');
 assert.throws(()=>correctFinancial(b,[{lineNo:4,revenueMzn:'200'}],'bad'));checks++;
