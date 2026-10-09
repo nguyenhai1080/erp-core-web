@@ -8,7 +8,7 @@ uses Invoice number alone. The owner's request adds service/period to Invoice.
 
 Examples:
 
-- `DoiSoat_MEUBEAT_2026-01_RUP0005_v1.pdf`
+- `Reconciliation_MEUBEAT_2026-01_RUP0005_v1.pdf`
 - `Invoice_MOVTV_2026-01_0001_10_2026_GST_INV_v1.pdf`
 - Consolidated Invoice: unique sorted parent service names separated by `+`.
 - Excel uses the same basename, with the original `.xlsm` or `.xlsx` suffix.
