@@ -61,20 +61,28 @@ export async function renderGstInvoice(data:InvoiceData,template:ReturnType<type
  const field=(label:string,value:string)=>{text(label,left+2,y,7.5,bold);const valueX=left+Math.max(77,measure(label,7.5,bold)+6);y=block(value,valueX,y,right-valueX,7.5)-2;};
  field('Address:',template.address);field('Tax Registration:',template.taxCode.replace(/^'/,''));field('Tel:',template.phone.replace(/'/g,''));
  text('INVOICE',(595.28-measure('INVOICE',22))/2,720,22,regular,rgb(0,0,0));
- y=702;rule(y,1.6);text('No.:',left+2,y-10,12);text(data.invoiceNumber,left+77,y-10,12,regular,accent);y-=15;rule(y,1.6);
- text('DATE',left+2,y-9);text(date(data.invoiceDate),left+77,y-9);y-=13;rule(y);
- text('PAYMENT DUE BY:',left+2,y-9);text(date(data.dueDate),left+77,y-9);y-=13;rule(y);
+ // Use font metrics to center each baseline within its row, including descenders.
+ const rowBaseline=(top:number,height:number,size:number,font=regular)=>{const ascent=font.heightAtSize(size,{descender:false}),descent=font.heightAtSize(size)-ascent;return top-height/2-(ascent-descent)/2;};
+ const metadataRow=(label:string,value:string,height:number,size=8,valueFont=regular,color=ink)=>{
+  text(label,left+8,rowBaseline(y,height,8,bold),8,bold);
+  text(value,left+100,rowBaseline(y,height,size,valueFont),size,valueFont,color);
+  y-=height;rule(y,.5);
+ };
+ y=702;page.drawRectangle({x:left,y:y-24,width,height:24,color:tint});rule(y,1.1);
+ metadataRow('No.:',data.invoiceNumber,24,11,bold,accent);
+ metadataRow('DATE',date(data.invoiceDate),16);
+ metadataRow('PAYMENT DUE BY:',date(data.dueDate),16);
  y-=13;field('TO:',data.partner.name.toUpperCase());field('Address:',data.partner.address);field('Business Registration No:',data.partner.registration);field('Tax Registration:',data.partner.tax);field('Attention:',data.partner.attn);field('Tel:',data.partner.phone??'');field('Contract No:',data.agreementNumbers.join('; '));y-=12;
- const cols=[left,left+86,left+362,left+416,left+474,right];
+ const cols=[left,left+32,left+362,left+416,left+474,right];
  const center=(s:string,a:number,b:number,yy:number,size=7.5,f=bold,color=ink)=>text(s,(a+b-measure(s,size,f))/2,yy,size,f,color);
- const heading=()=>{rule(y,1.7);y-=13;for(const [i,t] of ['No.','DESCRIPTION','AMOUNT','TAX','TOTAL'].entries())text(t,cols[i]+2,y,7.5,bold);y-=7;rule(y,.5,accent);page.drawRectangle({x:left,y:y-19,width,height:19,color:tint});center('A',cols[2],cols[3],y-13);center('B=A*10%',cols[3],cols[4],y-13);center('C=A-B',cols[4],cols[5],y-13);y-=19;};
+ const heading=()=>{rule(y,1.7);y-=13;for(const [i,t] of ['No.','DESCRIPTION','AMOUNT','TAX','TOTAL'].entries()){if(i===1)text(t,cols[i]+7,y,7.5,bold);else center(t,cols[i],cols[i+1],y);}y-=7;rule(y,.5,accent);page.drawRectangle({x:left,y:y-19,width,height:19,color:tint});center('A',cols[2],cols[3],y-13);center('B=A*10%',cols[3],cols[4],y-13);center('C=A-B',cols[4],cols[5],y-13);y-=19;};
  heading();
  const monthName=new Date(data.period+'-01T00:00:00Z').toLocaleString('en-US',{month:'long',timeZone:'UTC'})+' '+data.period.slice(0,4);
  for(const [index,line] of data.lines.entries()){
   const desc=wrap('Sharing revenue for '+line.serviceName+' in '+monthName,cols[2]-cols[1]-12,7.5,bold),height=Math.max(19,desc.length*10.5+8);
   if(y-height<300){page=doc.addPage([595.28,841.89]);text('INVOICE '+data.invoiceNumber+' - continued',left,794,12);y=772;heading();}
   if(index%2===1)page.drawRectangle({x:left,y:y-height,width,height,color:tint});
-  text(String(index+1),left+11,y-12);desc.forEach((d,i)=>text(d,cols[1]+2,y-12-i*10.5,7.5,bold));
+  center(String(index+1),cols[0],cols[1],y-12,7.5,regular);desc.forEach((d,i)=>text(d,cols[1]+7,y-12-i*10.5,7.5,bold));
   [line.revenue,line.wht,line.payable].forEach((v,i)=>center(money(v),cols[i+2],cols[i+3],y-12,7.5,bold));y-=height;
  }
  const banks=[['Name of Beneficiary:',template.bank.beneficiary],['Name of Bank:',template.bank.bankName],['Address of Bank:',template.bank.bankAddress],['Account Number:',template.bank.account.replace(/^'/,'')],['SWIFT Code',template.bank.swift],['Payment Reference:',data.invoiceNumber]];
