@@ -1,10 +1,11 @@
+import {assertDraftInvoiceDeletion} from './draft-deletion.js';
 import {randomUUID} from 'node:crypto';
 import {financialFilename,invoiceServices} from './document-filename.js';
 import type {FastifyInstance} from 'fastify';
 import {z} from 'zod';
 import {prisma,Prisma} from '@erp/db';
 import {requirePermission,type AuthConfig} from '../auth/access.js';
-import {audit,code,CommandError,date,parse,writeGuard} from './commands.js';
+import {audit,code,CommandError,date,parse,writeGuard,unchanged,timestamp} from './commands.js';
 import {financialPeriodLock} from './recon-finalize.js';
 import {asset,checkedFile,derivedBytes,persistPdf,persistWorkbook,placementSchema,rollbackFiles,sha,type Placement} from './financial-documents.js';
 import {fillGstWorkbook,readGstTemplate,renderGstInvoice,usdWords,type InvoiceData,type InvoiceLine} from './invoice-template.js';
@@ -40,6 +41,7 @@ async function plan(tx:Prisma.TransactionClient,companyId:string,body:Input){
  const groups=body.invoiceMode==='CONSOLIDATED'?[{serviceId:null,lines:[...groupLines.values()].flat(),headers}]:headers.map(h=>({serviceId:h.serviceId,lines:groupLines.get(h.serviceId)!,headers:[h]}));
  const month=body.invoiceDate.slice(0,7),seq=await tx.sequence.findUnique({where:{companyId_sequenceName:{companyId,sequenceName:'GST_INVOICE_'+month}}});
  const existing=await tx.invoice.findMany({where:{companyId,partnerId:partner.id,period:body.period,isCurrent:true,status:{notIn:['CANCELLED','SUPERSEDED']}},include:{scopes:{include:{items:true}}},take:501});if(existing.length>500)throw new CommandError(409,'Lịch sử Invoice vượt giới hạn.');
+ const history=await tx.invoice.groupBy({by:['businessKey'],where:{companyId,partnerId:partner.id,period:body.period},_max:{revisionNo:true}});
  const invoices=groups.map((g,idx)=>{
   const businessKey=[partner.partnerKey.toUpperCase(),body.period,body.invoiceMode,g.serviceId??'ALL'].join('|'),old=existing.find(v=>v.businessKey===businessKey);
   const headerIds=g.headers.map(h=>h.id),overlap=existing.filter(i=>i.id!==old?.id&&i.scopes.some(s=>s.items.some(si=>headerIds.includes(si.revenueId))));
@@ -48,7 +50,7 @@ async function plan(tx:Prisma.TransactionClient,companyId:string,body:Input){
   const invoiceNumber=String((seq?.currentValue??0n)+BigInt(idx)+1n).padStart(4,'0')+'/'+body.invoiceDate.slice(5,7)+'/'+body.invoiceDate.slice(0,4)+'/GST/INV';
   const totals={revenue:total(g.lines,'revenue'),wht:total(g.lines,'wht'),payable:total(g.lines,'payable')};
   const data:InvoiceData={invoiceNumber,invoiceDate:body.invoiceDate,dueDate:due.toISOString().slice(0,10),period:body.period,paymentTermDays:body.paymentTermDays,companyName:company.companyName,companyCode:company.companyCode,partner:{name:partner.legalName,address:partner.billingAddress??partner.registeredAddress??'',registration:partner.registrationNumber??'',tax:partner.taxCode??'',attn:partner.invoiceRecipient??partner.contactName??'',email:partner.invoiceEmail??partner.email??''},lines:g.lines,totals,amountInWords:usdWords(totals.payable),agreementNumbers:[...new Set(g.headers.map(h=>h.contract.contractNumber??h.contract.contractCode))]};
-  return {businessKey,serviceId:g.serviceId,fileServices:g.headers.map(h=>h.service.serviceName),data,headerIds,old:old?{id:old.id,revisionNo:old.revisionNo,updatedAt:old.updatedAt,status:old.status,paidAmount:old.paidAmount.toFixed(2)}:null};
+  return {nextRevision:(history.find(v=>v.businessKey===businessKey)?._max.revisionNo??0)+1,businessKey,serviceId:g.serviceId,fileServices:g.headers.map(h=>h.service.serviceName),data,headerIds,old:old?{id:old.id,revisionNo:old.revisionNo,updatedAt:old.updatedAt,status:old.status,paidAmount:old.paidAmount.toFixed(2)}:null};
  });
  const state={input:body,companyUpdatedAt:company.updatedAt,partnerUpdatedAt:partner.updatedAt,rows:candidates.map(v=>({id:v.id,updatedAt:v.updatedAt,status:v.status,reconciliationUpdatedAt:v.reconciliation.updatedAt,json:v.calculationJson,contractUpdatedAt:v.contract.updatedAt,serviceUpdatedAt:v.service.updatedAt})),uploads:uploads.map(v=>({id:v.id,updatedAt:v.updatedAt})),existing:existing.map(v=>({id:v.id,updatedAt:v.updatedAt,status:v.status,paidAmount:v.paidAmount.toFixed()})),template:{id:template.document.id,version:template.document.versionNo,checksum:template.document.attachment.checksumSha256},signing:{id:signing.document.id,version:signing.document.versionNo,checksum:signing.document.attachment.checksumSha256},invoices};
  return {invoices,digest:sha(JSON.stringify(state)),template,signing,profile,rows,candidates,reconIds};
@@ -59,8 +61,23 @@ export async function invoiceRoutes(app:FastifyInstance,config:AuthConfig){
  app.get('/api/v1/invoices/signing-asset',{preHandler:requirePermission('INVOICE_VIEW')},async(request,reply)=>{const a=await prisma.$transaction(tx=>asset(tx,request.auth!.companyId,'SIGNING_COMPOSITE'));return reply.type(a.document.attachment.mimeType!).header('Cache-Control','no-store').send(a.bytes);});
  app.get('/api/v1/invoices/references',{preHandler:requirePermission('INVOICE_VIEW')},async request=>({partners:await prisma.partner.findMany({where:{companyId:request.auth!.companyId},select:{id:true,partnerKey:true,legalName:true,paymentTermDays:true},orderBy:{legalName:'asc'},take:1000})}));
  app.get('/api/v1/invoices',{preHandler:requirePermission('INVOICE_VIEW')},async request=>{
-  const q=parse(z.object({page:z.coerce.number().int().min(1).max(100000).default(1),period:z.string().regex(/^20\d{2}-(0[1-9]|1[0-2])$/).optional()}).strict(),request.query),where={companyId:request.auth!.companyId,...(q.period?{period:q.period}:{})};
-  const [items,total]=await prisma.$transaction([prisma.invoice.findMany({where,select:{id:true,invoiceNumber:true,invoiceDate:true,dueDate:true,period:true,invoiceMode:true,status:true,revisionNo:true,isCurrent:true,revenueAmount:true,whtAmount:true,payableAmount:true,paidAmount:true,partner:{select:{legalName:true}}},orderBy:[{createdAt:'desc'},{id:'asc'}],skip:(q.page-1)*50,take:50}),prisma.invoice.count({where})]);return {items,total,page:q.page,limit:50};
+  const q=parse(z.object({page:z.coerce.number().int().min(1).max(100000).default(1),period:z.string().regex(/^20\d{2}-(0[1-9]|1[0-2])$/).optional()}).strict(),request.query),where={companyId:request.auth!.companyId,status:{not:'CANCELLED'},...(q.period?{period:q.period}:{})};
+  const [items,total]=await prisma.$transaction([prisma.invoice.findMany({where,select:{id:true,invoiceNumber:true,invoiceDate:true,dueDate:true,period:true,invoiceMode:true,status:true,revisionNo:true,updatedAt:true,isCurrent:true,revenueAmount:true,whtAmount:true,payableAmount:true,paidAmount:true,partner:{select:{legalName:true}}},orderBy:[{createdAt:'desc'},{id:'asc'}],skip:(q.page-1)*50,take:50}),prisma.invoice.count({where})]);return {items,total,page:q.page,limit:50};
+ });
+ app.post('/api/v1/invoices/:id/delete',{onRequest:writeGuard('INVOICE_CANCEL',config)},async request=>{
+  const {id}=parse(z.object({id:z.uuid()}).strict(),request.params),body=parse(z.object({expectedUpdatedAt:timestamp,confirmed:z.literal(true)}).strict(),request.body),user=request.auth!;
+  return prisma.$transaction(async tx=>{
+   const initial=await tx.invoice.findFirst({where:{id,companyId:user.companyId}});if(!initial)throw new CommandError(404,'Không tìm thấy Invoice của công ty.');
+   await financialPeriodLock(tx,user.companyId,initial.partnerId,initial.period);
+   await tx.$queryRaw`SELECT id FROM invoices WHERE id=${id}::uuid AND company_id=${user.companyId}::uuid FOR UPDATE`;
+   const item=await tx.invoice.findFirstOrThrow({where:{id,companyId:user.companyId},include:{receivable:true}});unchanged(item,body.expectedUpdatedAt);assertDraftInvoiceDeletion(item);
+   await tx.invoiceScopeItem.updateMany({where:{companyId:user.companyId,scope:{invoiceId:id}},data:{isCurrent:false}});
+   await tx.invoiceScope.updateMany({where:{companyId:user.companyId,invoiceId:id},data:{isCurrent:false,status:'CANCELLED'}});
+   await tx.document.updateMany({where:{companyId:user.companyId,entityType:'Invoice',entityId:id},data:{status:'CANCELLED'}});
+   await tx.invoice.update({where:{id},data:{status:'CANCELLED',isCurrent:false}});
+   await audit(tx,user,'INVOICE_DELETE_DRAFT','Invoice',id,{invoiceNumber:item.invoiceNumber,status:item.status,documentId:item.documentId},{status:'CANCELLED',isCurrent:false},'User confirmed draft deletion; retain files and provenance for audit');
+   return {message:'Đã xóa Invoice nháp và ngừng cung cấp PDF/Excel. Có thể tạo lại Invoice từ doanh thu đã chốt.'};
+  });
  });
  app.post('/api/v1/invoices/preview',{onRequest:writeGuard('INVOICE_CREATE',config)},async request=>prisma.$transaction(async tx=>publicPlan(await plan(tx,request.auth!.companyId,parse(input,request.body))),{isolationLevel:'RepeatableRead',timeout:15000}));
  const confirm=input.extend({digest:z.string().regex(/^[a-f0-9]{64}$/),placements:z.array(z.object({businessKey:z.string().max(300),placement:placementSchema}).strict()).min(1).max(100),confirmed:z.literal(true)}).strict();
@@ -84,7 +101,7 @@ export async function invoiceRoutes(app:FastifyInstance,config:AuthConfig){
     for(const i of p.invoices){const placement=b.placements.find(v=>v.businessKey===i.businessKey)!.placement,id=randomUUID();
      const sequence=await tx.sequence.upsert({where:{companyId_sequenceName:{companyId:user.companyId,sequenceName:'GST_INVOICE_'+b.selection.invoiceDate.slice(0,7)}},create:{companyId:user.companyId,sequenceName:'GST_INVOICE_'+b.selection.invoiceDate.slice(0,7),prefix:'GST',padding:4,currentValue:1},update:{currentValue:{increment:1}}});
      const invoiceNumber=sequence.currentValue.toString().padStart(4,'0')+'/'+b.selection.invoiceDate.slice(5,7)+'/'+b.selection.invoiceDate.slice(0,4)+'/GST/INV';if(invoiceNumber!==i.data.invoiceNumber)throw new CommandError(409,'Số Invoice đã thay đổi. Xem lại trước khi tạo.');
-     const pdf=await renderGstInvoice(i.data,p.profile,{bytes:p.signing.bytes,mime:p.signing.document.attachment.mimeType},placement),version=(i.old?.revisionNo??0)+1;
+     const pdf=await renderGstInvoice(i.data,p.profile,{bytes:p.signing.bytes,mime:p.signing.document.attachment.mimeType},placement),version=i.nextRevision;
      const doc=await persistPdf(tx,user,'Invoice',id,'INVOICE',financialFilename('Invoice',i.fileServices,b.selection.period,invoiceNumber,version),pdf,version,rollback),ext=p.template.document.attachment.storedFilename.endsWith('.xlsm')?'xlsm':'xlsx';
      const workbook=await persistWorkbook(tx,user,id,fillGstWorkbook(p.template.bytes,i.data),financialFilename('Invoice',i.fileServices,b.selection.period,invoiceNumber,version,ext),ext,rollback);
      if(i.old){const previous=await tx.invoice.findFirstOrThrow({where:{id:i.old.id,companyId:user.companyId}});if(previous.paidAmount.gt(0)||previous.status!=='DRAFT')throw new CommandError(409,'Invoice cũ có payment hoặc đã chuyển trạng thái.');
@@ -103,7 +120,7 @@ export async function invoiceRoutes(app:FastifyInstance,config:AuthConfig){
  });
  app.get('/api/v1/invoices/:id/download',{preHandler:requirePermission('INVOICE_VIEW')},async(request,reply)=>{
   const {id}=parse(z.object({id:z.uuid()}).strict(),request.params),q=parse(z.object({format:z.enum(['pdf','workbook']).default('pdf')}).strict(),request.query),companyId=request.auth!.companyId;
-  const file=await prisma.$transaction(async tx=>{const i=await tx.invoice.findFirst({where:{companyId,id}});if(!i)throw new CommandError(404,'Không tìm thấy Invoice của công ty.');
+  const file=await prisma.$transaction(async tx=>{const i=await tx.invoice.findFirst({where:{companyId,id}});if(!i||i.status==='CANCELLED')throw new CommandError(404,'Không tìm thấy Invoice của công ty.');
    if(q.format==='pdf'){const d=await derivedBytes(tx,companyId,i.documentId,'INVOICE');return {bytes:d.bytes,mime:'application/pdf',name:financialFilename('Invoice',invoiceServices(i.snapshot),i.period,i.invoiceNumber,i.revisionNo)};}
    const d=await tx.document.findFirst({where:{companyId,id:(i.snapshot as any).workbookDocumentId,entityId:id,entityType:'Invoice',documentType:'INVOICE_WORKBOOK'},include:{attachment:true}});if(!d||d.attachment.companyId!==companyId)throw new CommandError(404,'Không tìm thấy workbook Invoice.');const ext=d.attachment.storedFilename.endsWith('.xlsm')?'xlsm':'xlsx';return {bytes:await checkedFile(d.attachment,`invoices/${companyId}/${d.attachment.id}.${ext}`,5*1024*1024),mime:d.attachment.mimeType!,name:financialFilename('Invoice',invoiceServices(i.snapshot),i.period,i.invoiceNumber,i.revisionNo,ext)};
   });return reply.type(file.mime).header('Cache-Control','no-store').header('X-Content-Type-Options','nosniff').header('Content-Disposition','attachment; filename="'+file.name+'"').send(file.bytes);

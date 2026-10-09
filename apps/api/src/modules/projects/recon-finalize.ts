@@ -17,7 +17,7 @@ const financial=(u:Upload):Financial=>((u.extractionData as any)?.financial??par
 const stored=(u:Upload)=>({...u,rawText:undefined,attachment:{originalFilename:u.attachment.originalFilename,checksumSha256:u.attachment.checksumSha256,fileSize:Number(u.attachment.fileSize)}});
 const key=(s:string)=>normalizeService(s).replace(/[^A-Z0-9]/g,'');
 export async function financialPeriodLock(tx:Prisma.TransactionClient,companyId:string,partnerId:string,period:string){await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${companyId+'|FINANCE|'+partnerId+'|'+period},0))`;}
-async function get(tx:Prisma.TransactionClient,companyId:string,id:string){const u=await tx.outputReconUpload.findFirst({where:{companyId,id},include});if(!u)throw new CommandError(404,'Không tìm thấy PDF đối soát của công ty.');return u;}
+async function get(tx:Prisma.TransactionClient,companyId:string,id:string){const u=await tx.outputReconUpload.findFirst({where:{companyId,id},include});if(!u||u.status==='CANCELLED')throw new CommandError(404,'Không tìm thấy PDF đối soát của công ty.');return u;}
 async function review(tx:Prisma.TransactionClient,u:Upload){
  const f=financial(u),a=await assessment(tx,u,parseReconIdentity(u.rawText??'')),errors=[...f.errors];
  if(a.identity.state!=='MATCHED')errors.push(a.identity.message);

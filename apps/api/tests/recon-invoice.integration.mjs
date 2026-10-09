@@ -17,7 +17,7 @@ if(!new URL(process.env.DATABASE_URL).pathname.startsWith('/erp_execution_accept
 const storage=await mkdtemp(resolve(tmpdir(),'erp-finance-'));process.env.STORAGE_ROOT=storage;
 const company=await prisma.company.upsert({where:{companyCode:'GST'},create:{companyCode:'GST',companyName:'Synthetic GST test company'},update:{}}),marker=randomUUID();
 const other=await prisma.company.create({data:{companyCode:'FOREIGN_'+marker,companyName:'Synthetic foreign company'}});
-const permissions=['RECON_VIEW','RECON_UPLOAD','RECON_REVIEW','RECON_APPROVE','INVOICE_VIEW','INVOICE_CREATE','INVOICE_ISSUE','REVENUE_VIEW','AR_VIEW','SYSTEM_CONFIG_EDIT'];
+const permissions=['RECON_CANCEL','INVOICE_CANCEL','RECON_VIEW','RECON_UPLOAD','RECON_REVIEW','RECON_APPROVE','INVOICE_VIEW','INVOICE_CREATE','INVOICE_ISSUE','REVENUE_VIEW','AR_VIEW','SYSTEM_CONFIG_EDIT'];
 const ps=await Promise.all(permissions.map(code=>prisma.permission.upsert({where:{code},create:{code,name:code,module:'FIXTURE'},update:{}})));
 const user=await prisma.user.create({data:{companyId:company.id,email:marker+'@example.test',fullName:'Synthetic finance test',passwordHash:'unused-local-session-fixture'}});
 const role=await prisma.role.create({data:{companyId:company.id,code:marker,name:'Synthetic role',permissions:{create:ps.map(p=>({permissionId:p.id}))}}});await prisma.userRole.create({data:{userId:user.id,roleId:role.id}});
@@ -42,6 +42,13 @@ const cells=['B1','C2','C3','C4','C6','C7','C8','C9','C10','C11','C12','C13','B1
 template.addFile('xl/worksheets/sheet1.xml',Buffer.from('<worksheet><sheetData><row r="1">'+cells.map(ref=>'<c r="'+ref+'" t="s"><v>0</v></c>').join('')+'</row></sheetData></worksheet>'));template.addFile('xl/media/image1.png',png);template.addFile('xl/vbaProject.bin',Buffer.from('synthetic-vba-preserved-not-executed'));const templateBytes=template.toBuffer();
 try{
  for(const path of ['/api/v1/invoices','/api/v1/output-recon/signing-asset'])check((await request('GET',path,undefined,{cookie:''})).statusCode,401);
+ const disposable=await upload(singleText),deleteReconPath='/api/v1/output-recon/uploads/'+disposable.item.id+'/delete',deleteReconBody={expectedUpdatedAt:disposable.item.updatedAt,confirmed:true};
+ check((await request('POST',deleteReconPath,deleteReconBody,{'x-csrf-token':'bad'})).statusCode,403);
+ check((await post(deleteReconPath,{...deleteReconBody,confirmed:false})).statusCode,400);
+ check((await post(deleteReconPath,{...deleteReconBody,expectedUpdatedAt:'2000-01-01T00:00:00.000Z'})).statusCode,409);
+ check((await post(deleteReconPath,deleteReconBody)).statusCode,200);
+ for(const suffix of ['', '/download','/preview','/review'])check((await request('GET','/api/v1/output-recon/uploads/'+disposable.item.id+suffix)).statusCode,404);
+ check((await post('/api/v1/output-recon/uploads/'+disposable.item.id+'/read',{expectedUpdatedAt:disposable.item.updatedAt})).statusCode,409);
  const single=await upload(singleText),reviewWithoutAsset=await getReview(single.item.id);check(reviewWithoutAsset.canFinalize,false);check(reviewWithoutAsset.financial.ready,true);
  const currentAssets=await prisma.document.findMany({where:{companyId:company.id,entityType:'CompanyAsset',status:'ACTIVE'}});const assetCurrent=kind=>currentAssets.find(a=>a.documentType===kind)?.id??null;
  const uploadedAsset=await uploadAsset('SIGNING_COMPOSITE',png,'synthetic-signing.png',assetCurrent('SIGNING_COMPOSITE'));check(uploadedAsset.statusCode,201);check((await uploadAsset('INVOICE_TEMPLATE',templateBytes,'synthetic-template.xlsm',assetCurrent('INVOICE_TEMPLATE'))).statusCode,201);
@@ -81,6 +88,18 @@ try{
  const png2=await sharp({create:{width:200,height:120,channels:3,background:'#00aa00'}}).png().toBuffer();check((await uploadAsset('SIGNING_COMPOSITE',png2,'synthetic-signing2.png',oldSigner)).statusCode,201);check((await post('/api/v1/invoices/create',invoiceBody(p))).statusCode,409);
  p=(await post('/api/v1/invoices/preview',selection)).json();const regenerated=await post('/api/v1/invoices/create',invoiceBody(p));check(regenerated.statusCode,201);check(regenerated.json().items[0].revisionNo,2);check((await prisma.invoice.findUnique({where:{id:inv.id}})).status,'SUPERSEDED');check((await request('GET','/api/v1/invoices/'+inv.id+'/download')).rawPayload,invPdf.rawPayload);
  const newId=regenerated.json().items[0].id;await prisma.invoice.update({where:{id:newId},data:{paidAmount:'0.01'}});check((await post('/api/v1/invoices/preview',selection)).statusCode,409);
+ const deletePath='/api/v1/invoices/'+newId+'/delete',paidDraft=await prisma.invoice.findUniqueOrThrow({where:{id:newId}});
+ check((await post(deletePath,{expectedUpdatedAt:paidDraft.updatedAt.toISOString(),confirmed:true})).statusCode,409);
+ const freshDraft=await prisma.invoice.update({where:{id:newId},data:{paidAmount:0}}),deleteBody={expectedUpdatedAt:freshDraft.updatedAt.toISOString(),confirmed:true};
+ check((await request('POST',deletePath,deleteBody,foreignHeaders)).statusCode,404);
+ check((await request('POST',deletePath,deleteBody,{'x-csrf-token':'bad'})).statusCode,403);
+ const deletes=await Promise.all([post(deletePath,deleteBody),post(deletePath,deleteBody)]);check(deletes.map(r=>r.statusCode).sort(),[200,409]);
+ check(await prisma.invoiceScopeItem.count({where:{scope:{invoiceId:newId},isCurrent:true}}),0);
+ check(await prisma.accountReceivable.count({where:{invoiceId:newId}}),0);
+ check((await request('GET','/api/v1/invoices/'+newId+'/download')).statusCode,404);
+ check((await request('GET','/api/v1/invoices/'+newId+'/download?format=workbook')).statusCode,404);
+ const afterDeletePlan=(await post('/api/v1/invoices/preview',selection)).json();
+ const afterDeleteCreate=await post('/api/v1/invoices/create',invoiceBody(afterDeletePlan));check(afterDeleteCreate.statusCode,201);check(afterDeleteCreate.json().items[0].revisionNo,3);
  // A second synthetic partner verifies real per-service creation and rollback
  // after the first group's documents have been written.
  const partner2=await prisma.partner.create({data:{companyId:company.id,partnerKey:marker+'-2',partnerCode:marker+'-2',legalName:'Second synthetic customer',partnerType:'CUSTOMER'}});
