@@ -9,6 +9,7 @@ import {financialPeriodLock} from './recon-finalize.js';
 import {asset,checkedFile,derivedBytes,persistPdf,persistWorkbook,placementSchema,rollbackFiles,sha,type Placement} from './financial-documents.js';
 import {fillGstWorkbook,readGstTemplate,renderGstInvoice,usdWords,type InvoiceData,type InvoiceLine} from './invoice-template.js';
 import {previewReconPage} from './recon-reader.js';
+import {invoiceParentLines} from './invoice-lines.js';
 
 const input=z.object({partnerId:z.uuid(),period:z.string().regex(/^(20\d{2}|2100)-(0[1-9]|1[0-2])$/),invoiceMode:z.enum(['CONSOLIDATED','PER_SERVICE']),serviceId:z.uuid().optional(),invoiceDate:date,paymentTermDays:z.number().int().min(0).max(365).default(45)}).strict().refine(v=>v.invoiceMode==='PER_SERVICE'||!v.serviceId);
 type Input=z.infer<typeof input>;
@@ -33,12 +34,8 @@ async function plan(tx:Prisma.TransactionClient,companyId:string,body:Input){
  const template=await asset(tx,companyId,'INVOICE_TEMPLATE'),signing=await asset(tx,companyId,'SIGNING_COMPOSITE'),profile=readGstTemplate(template.bytes);
  if(company.companyCode!=='GST')throw new CommandError(409,'Mẫu GST hiện chỉ được dùng cho công ty GST.');
  const groupLines=new Map<string,InvoiceLine[]>();
- for(const h of headers){const hj=h.calculationJson as any;
-  const children=candidates.filter(v=>{const j=v.calculationJson as any;return j.rowType==='CHILD'&&j.includeInMonthlyTotal===false&&j.parentServiceId===h.serviceId&&v.reconciliationId===h.reconciliationId&&j.uploadId===hj.uploadId;}).sort((a,b)=>(a.calculationJson as any).lineNo-(b.calculationJson as any).lineNo);
-  const lines=(children.length?children:[h]).map(v=>{const j=v.calculationJson as any;return {revenueId:v.id,serviceId:v.serviceId,serviceName:v.service.serviceName,groupServiceId:h.serviceId,contractId:h.contractId,description:v.service.serviceName+' · '+body.period,revenue:r(D(j.invoiceRevenueUsd)),wht:r(D(j.invoiceWhtUsd)),payable:r(D(j.invoicePayableUsd)),uploadId:j.uploadId,lineNo:j.lineNo} as InvoiceLine;});
-  // DGC assigns the rounding residual to the last detail row in each group.
-  const last=lines.at(-1)!;for(const [field,target] of [['revenue',hj.invoiceRevenueUsd],['wht',hj.invoiceWhtUsd],['payable',hj.invoicePayableUsd]] as const){last[field]=r(D(last[field]).plus(D(target).minus(total(lines,field))));if(D(last[field]).lt(0))throw new CommandError(409,'Điều chỉnh làm tròn tạo số âm. Kiểm tra nhóm doanh thu.');}
-  groupLines.set(h.serviceId,lines);
+ for(const h of headers){
+  groupLines.set(h.serviceId,invoiceParentLines([h],body.period));
  }
  const groups=body.invoiceMode==='CONSOLIDATED'?[{serviceId:null,lines:[...groupLines.values()].flat(),headers}]:headers.map(h=>({serviceId:h.serviceId,lines:groupLines.get(h.serviceId)!,headers:[h]}));
  const month=body.invoiceDate.slice(0,7),seq=await tx.sequence.findUnique({where:{companyId_sequenceName:{companyId,sequenceName:'GST_INVOICE_'+month}}});
