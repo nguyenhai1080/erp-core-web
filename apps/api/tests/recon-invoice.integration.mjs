@@ -17,7 +17,7 @@ if(!new URL(process.env.DATABASE_URL).pathname.startsWith('/erp_execution_accept
 const storage=await mkdtemp(resolve(tmpdir(),'erp-finance-'));process.env.STORAGE_ROOT=storage;
 const company=await prisma.company.upsert({where:{companyCode:'GST'},create:{companyCode:'GST',companyName:'Synthetic GST test company'},update:{}}),marker=randomUUID();
 const other=await prisma.company.create({data:{companyCode:'FOREIGN_'+marker,companyName:'Synthetic foreign company'}});
-const permissions=['RECON_CANCEL','INVOICE_CANCEL','RECON_VIEW','RECON_UPLOAD','RECON_REVIEW','RECON_APPROVE','INVOICE_VIEW','INVOICE_CREATE','INVOICE_ISSUE','REVENUE_VIEW','AR_VIEW','SYSTEM_CONFIG_EDIT'];
+const permissions=['PAYMENT_VIEW','PAYMENT_CREATE','PAYMENT_APPROVE','PAYMENT_POST','RECON_CANCEL','INVOICE_CANCEL','RECON_VIEW','RECON_UPLOAD','RECON_REVIEW','RECON_APPROVE','INVOICE_VIEW','INVOICE_CREATE','INVOICE_ISSUE','REVENUE_VIEW','AR_VIEW','SYSTEM_CONFIG_EDIT'];
 const ps=await Promise.all(permissions.map(code=>prisma.permission.upsert({where:{code},create:{code,name:code,module:'FIXTURE'},update:{}})));
 const user=await prisma.user.create({data:{companyId:company.id,email:marker+'@example.test',fullName:'Synthetic finance test',passwordHash:'unused-local-session-fixture'}});
 const role=await prisma.role.create({data:{companyId:company.id,code:marker,name:'Synthetic role',permissions:{create:ps.map(p=>({permissionId:p.id}))}}});await prisma.userRole.create({data:{userId:user.id,roleId:role.id}});
@@ -148,6 +148,33 @@ try{
  check((await request('GET',arPath,undefined,foreignHeaders)).json().total,0);check((await request('GET','/api/v1/receivables?asOf=invalid')).statusCode,400);
  check((await request('GET','/api/v1/revenues?details=true&partnerId='+partner2.id)).json().items.every(v=>v.status==='INVOICED'),false); // CHILD remains approved detail; only TOTAL is billed.
  check((await request('GET','/api/v1/revenues?partnerId='+partner2.id)).json().items.every(v=>v.status==='INVOICED'),true);
+ // DGC payment flow: issued/current only, USD AR and independently recorded VND.
+ const payInv=await prisma.invoice.findUniqueOrThrow({where:{id:issueIds[0]}}),payUrl='/api/v1/invoices/'+payInv.id+'/payments';
+ const paymentBody={requestId:randomUUID(),expectedUpdatedAt:payInv.updatedAt.toISOString(),paymentDate:'2026-03-19',paidUsd:'0.50',paidVnd:'12500',swiftNo:'SYNTHETIC-SWIFT',bankAccount:'Synthetic bank account',paymentMethod:'Bank Transfer',note:'Synthetic payment only',confirmed:true,swiftFile:{filename:'synthetic-swift.pdf',base64:single.bytes.toString('base64')}};
+ check((await request('GET',payUrl,undefined,foreignHeaders)).statusCode,404);
+ check((await request('POST',payUrl,paymentBody,foreignHeaders)).statusCode,404);
+ check((await request('POST',payUrl,paymentBody,{'x-csrf-token':'bad'})).statusCode,403);
+ const paymentPermission=ps.find(p=>p.code==='PAYMENT_APPROVE');await prisma.rolePermission.delete({where:{roleId_permissionId:{roleId:role.id,permissionId:paymentPermission.id}}});check((await post(payUrl,paymentBody)).statusCode,403);await prisma.rolePermission.create({data:{roleId:role.id,permissionId:paymentPermission.id}});
+ check((await post(payUrl,{...paymentBody,expectedUpdatedAt:'2000-01-01T00:00:00.000Z'})).statusCode,409);
+ check((await post(payUrl,{...paymentBody,paidUsd:'9999'})).statusCode,409);
+ check((await post('/api/v1/invoices/'+inv.id+'/payments',paymentBody)).statusCode,409);
+ const scopeBefore=await prisma.invoiceScope.findFirstOrThrow({where:{invoiceId:payInv.id}});await prisma.invoiceScope.update({where:{id:scopeBefore.id},data:{isCurrent:false}});check((await post(payUrl,paymentBody)).statusCode,409);await prisma.invoiceScope.update({where:{id:scopeBefore.id},data:{isCurrent:true}});
+ // A downstream failure rolls back payment, Invoice, AR, audit and uploaded evidence.
+ const filesBefore=await prisma.attachment.count({where:{companyId:company.id}});
+ await prisma.$executeRawUnsafe("ALTER TABLE account_receivables ADD CONSTRAINT acceptance_no_payment CHECK (paid_amount=0)");
+ const rollbackPayment=await post(payUrl,paymentBody);if(rollbackPayment.statusCode!==500)console.log('Payment rollback response',rollbackPayment.json());check(rollbackPayment.statusCode,500);check(await prisma.invoicePayment.count({where:{invoiceId:payInv.id}}),0);check(await prisma.attachment.count({where:{companyId:company.id}}),filesBefore);
+ await prisma.$executeRawUnsafe('ALTER TABLE account_receivables DROP CONSTRAINT acceptance_no_payment');
+ const paymentsRace=await Promise.all([post(payUrl,paymentBody),post(payUrl,paymentBody)]);check(paymentsRace.map(r=>r.statusCode),[200,200]);check(paymentsRace[0].json().paymentId,paymentsRace[1].json().paymentId);check(await prisma.invoicePayment.count({where:{invoiceId:payInv.id}}),1);
+ check((await post(payUrl,{...paymentBody,paidUsd:'0.51'})).statusCode,409);
+ let paidInvoice=await prisma.invoice.findUniqueOrThrow({where:{id:payInv.id},include:{receivable:true}});check(paidInvoice.status,'PARTIALLY_PAID');check(paidInvoice.paidAmount.toFixed(2),'0.50');check(paidInvoice.receivable.paidAmount.toFixed(2),'0.50');
+ const history=(await request('GET',payUrl)).json();check(history.items.length,1);check(history.items[0].fxRate,'25000');check(history.items[0].paidVnd,'12500');
+ const swiftUrl='/api/v1/invoice-payments/'+history.items[0].id+'/document';check((await request('GET',swiftUrl)).rawPayload,single.bytes);check((await request('GET',swiftUrl,undefined,foreignHeaders)).statusCode,404);
+ const finalBody={...paymentBody,requestId:randomUUID(),expectedUpdatedAt:paidInvoice.updatedAt.toISOString(),paidUsd:paidInvoice.receivable.outstandingAmount.toFixed(2),paidVnd:'100000',swiftFile:{filename:'synthetic-swift.png',base64:png.toString('base64')}};
+ const paidResponse=await post(payUrl,finalBody);check(paidResponse.statusCode,200);paidInvoice=await prisma.invoice.findUniqueOrThrow({where:{id:payInv.id},include:{receivable:true}});check(paidInvoice.status,'PAID');check(paidInvoice.receivable.outstandingAmount.toFixed(2),'0.00');check(paidInvoice.receivable.status,'PAID');
+ const lastPayment=await prisma.invoicePayment.findUniqueOrThrow({where:{id:paidResponse.json().paymentId}});check((await request('GET','/api/v1/invoice-payments/'+lastPayment.id+'/document')).rawPayload,png);
+ check((await post(payUrl,{...finalBody,requestId:randomUUID(),expectedUpdatedAt:paidInvoice.updatedAt.toISOString()})).statusCode,409);
+ check((await request('GET',arPath)).json().totals.paid,paidInvoice.payableAmount.toFixed(2));
+ check(await prisma.auditLog.count({where:{companyId:company.id,action:'INVOICE_PAYMENT_POST'}}),2);
  // Placement uses actual visual crop box for every orthogonal rotation.
  const square=await sharp({create:{width:100,height:100,channels:3,background:'#d80000'}}).png().toBuffer();
  for(const rotation of [0,90,180,270]){const doc=await PDFDocument.create(),page=doc.addPage([300,200]);page.setCropBox(20,15,260,170);page.setRotation(degrees(rotation));const source=Buffer.from(await doc.save({useObjectStreams:false}));const signed=await stampPdf(source,square,'image/png',{page:1,x:.2,y:.2,width:.15});const rendered=await previewReconPage(signed,1),{data:pix,info}=await sharp(rendered).removeAlpha().raw().toBuffer({resolveWithObject:true});const x=Math.floor(info.width*.25),y=Math.floor(info.height*(.2+.075*info.width/info.height)),idx=(y*info.width+x)*info.channels;check(pix[idx]>150&&pix[idx+1]<50&&pix[idx+2]<50,true);}
