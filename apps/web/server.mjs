@@ -16,7 +16,7 @@ const contentTypes = {
 const server = createServer(async (request, response) => {
   response.setHeader('Referrer-Policy', 'same-origin');
   response.setHeader('X-Content-Type-Options', 'nosniff');
-  response.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+  response.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
   let pathname;
   try { pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname); }
   catch { response.writeHead(400); response.end(); return; }
@@ -45,6 +45,7 @@ const server = createServer(async (request, response) => {
       const upload = request.method === 'POST' && (/^\/api\/v1\/projects\/[0-9a-f-]{36}\/documents$/i.test(pathname) || ['/api/v1/company-assets','/api/v1/output-recon/uploads','/api/v1/output-recon/inspect'].includes(pathname));
       const readPdf = request.method === 'POST' && (pathname === '/api/v1/output-recon/inspect' || /^\/api\/v1\/output-recon\/uploads\/[0-9a-f-]{36}\/read$/i.test(pathname));
       const preview = request.method === 'GET' && /^\/api\/v1\/output-recon\/uploads\/[0-9a-f-]{36}\/preview$/i.test(pathname);
+      const financialPdf = request.method === 'POST' && (pathname.startsWith('/api/v1/invoices/') || /\/(finalize|signed-preview)$/.test(pathname));
       const bodyLimit = upload ? 7 * 1024 * 1024 : 32768;
       const chunks = []; let size = 0;
       for await (const chunk of request) {
@@ -64,7 +65,7 @@ const server = createServer(async (request, response) => {
       const upstream = await fetch(target, {
         method: request.method, headers,
         body: request.method === 'POST' ? Buffer.concat(chunks) : undefined,
-        redirect: 'manual', signal: AbortSignal.timeout(readPdf ? 120000 : upload ? 60000 : preview ? 45000 : 15000)
+        redirect: 'manual', signal: AbortSignal.timeout(readPdf ? 120000 : financialPdf ? 65000 : upload ? 60000 : preview ? 45000 : 15000)
       });
       const outputHeaders = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' };
       if (upstream.headers.get('content-type')?.split(';')[0] === 'application/pdf') {
@@ -72,7 +73,7 @@ const server = createServer(async (request, response) => {
         outputHeaders['Content-Disposition'] = upstream.headers.get('content-disposition') || 'attachment; filename="document.pdf"';
       }
       if (preview && upstream.headers.get('content-type')?.split(';')[0] === 'image/png') outputHeaders['Content-Type'] = 'image/png';
-      if (/^\/api\/v1\/company-assets\/[0-9a-f-]{36}\/download$/i.test(pathname) && ['image/png','image/jpeg','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','application/vnd.ms-excel.sheet.macroEnabled.12'].includes(upstream.headers.get('content-type')?.split(';')[0])) {
+      if ((/^\/api\/v1\/company-assets\/[0-9a-f-]{36}\/download$/i.test(pathname) || /^\/api\/v1\/invoices\/[0-9a-f-]{36}\/download$/i.test(pathname) || ['/api/v1/output-recon/signing-asset','/api/v1/invoices/signing-asset','/api/v1/invoices/preview-page'].includes(pathname)) && ['image/png','image/jpeg','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','application/vnd.ms-excel.sheet.macroEnabled.12'].includes(upstream.headers.get('content-type')?.split(';')[0])) {
         outputHeaders['Content-Type'] = upstream.headers.get('content-type');
         outputHeaders['Content-Disposition'] = upstream.headers.get('content-disposition') || 'attachment';
       }

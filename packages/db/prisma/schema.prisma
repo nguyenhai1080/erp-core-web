@@ -522,6 +522,7 @@ enum ValidationSeverity {
 }
 
 model Company {
+  invoices Invoice[]
   outputReconUploads OutputReconUpload[]
   id                String       @id @default(uuid()) @db.Uuid
   companyCode       String       @unique @map("company_code")
@@ -586,6 +587,7 @@ model Company {
 }
 
 model User {
+  invoices Invoice[]
   outputReconUploads OutputReconUpload[]
   id           String     @id @default(uuid()) @db.Uuid
   companyId    String     @map("company_id") @db.Uuid
@@ -756,6 +758,7 @@ model Attachment {
 }
 
 model Document {
+  invoices Invoice[]
   id             String         @id @default(uuid()) @db.Uuid
   companyId      String         @map("company_id") @db.Uuid
   documentCode   String         @map("document_code")
@@ -806,6 +809,7 @@ model AuditLog {
 }
 
 model Partner {
+  invoices Invoice[]
   outputReconUploads OutputReconUpload[]
   id                  String        @id @default(uuid()) @db.Uuid
   companyId           String        @map("company_id") @db.Uuid
@@ -908,6 +912,7 @@ model PartnerBankAccount {
 }
 
 model Service {
+  invoices Invoice[]
   outputReconUploads OutputReconUpload[]
   id                   String          @id @default(uuid()) @db.Uuid
   companyId            String          @map("company_id") @db.Uuid
@@ -1802,6 +1807,8 @@ model Revenue {
 }
 
 model InvoiceScope {
+  invoiceId String? @map("invoice_id") @db.Uuid
+  invoice Invoice? @relation(fields: [invoiceId], references: [id])
   id             String             @id @default(uuid()) @db.Uuid
   companyId      String             @map("company_id") @db.Uuid
   scopeCode      String             @map("scope_code")
@@ -1835,6 +1842,44 @@ model InvoiceScope {
   @@index([companyId, status])
   @@index([scopeKey, isCurrent])
   @@map("invoice_scopes")
+}
+
+// DGC invoice header. Scope items keep the authoritative Revenue links; the
+// immutable snapshot retains billing details, child lines and asset versions.
+model Invoice {
+  id String @id @default(uuid()) @db.Uuid
+  companyId String @map("company_id") @db.Uuid
+  invoiceNumber String @map("invoice_number")
+  businessKey String @map("business_key")
+  revisionNo Int @default(1) @map("revision_no")
+  isCurrent Boolean @default(true) @map("is_current")
+  status String @default("DRAFT") @db.VarChar(30)
+  partnerId String @map("partner_id") @db.Uuid
+  period String @db.VarChar(7)
+  invoiceMode InvoiceMode @map("invoice_mode")
+  serviceId String? @map("service_id") @db.Uuid
+  invoiceDate DateTime @map("invoice_date") @db.Date
+  dueDate DateTime @map("due_date") @db.Date
+  currency String @default("USD") @db.VarChar(3)
+  revenueAmount Decimal @map("revenue_amount") @db.Decimal(20,4)
+  whtAmount Decimal @map("wht_amount") @db.Decimal(20,4)
+  payableAmount Decimal @map("payable_amount") @db.Decimal(20,4)
+  paidAmount Decimal @default(0) @map("paid_amount") @db.Decimal(20,4)
+  snapshot Json
+  documentId String @map("document_id") @db.Uuid
+  createdById String @map("created_by_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  company Company @relation(fields: [companyId], references: [id])
+  partner Partner @relation(fields: [partnerId], references: [id])
+  service Service? @relation(fields: [serviceId], references: [id])
+  document Document @relation(fields: [documentId], references: [id])
+  createdBy User @relation(fields: [createdById], references: [id])
+  scopes InvoiceScope[]
+  @@unique([companyId,invoiceNumber])
+  @@unique([companyId,businessKey,revisionNo])
+  @@index([companyId,partnerId,period])
+  @@map("invoices")
 }
 
 model InvoiceScopeItem {

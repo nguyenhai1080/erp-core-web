@@ -19,10 +19,10 @@ Owner correction, 2026-10-08: inherit the updated review-and-finalize workflow, 
 2. Review original scan AND full financial results. Preserve service-detail and summary tables in both MZN/USD; show source warnings and permitted manual Revenue MZN adjustments. Position the real company's three authorized image assets on the actual page. Confirm finalizes verified Revenue/Reconciliation and a new signed PDF, with actor/version/history and atomic failure behavior. Retain original PDF. Already-approved placement-only edits must not regenerate financial records.
 3. Create Invoice from finalized revenue, preserving donor invoice modes and scope/payment guards.
 
-## Current correction status
+## Target implementation and remaining parity
 
-Working branch `fix/dgc-recon-workflow`, not deployed: PDF-derived service/month discovery before intake; automatic read/open-review; authenticated original page raster preview with actual orientation/aspect ratio; no guessed service/month controls in the primary upload form. Existing v0.6.17 source/history is retained.
+The v0.6.19 implementation is described in DGC_OUTPUT_RECON_INVOICE_V0619.md. It includes PDF-derived intake, financial review/correction, actual company composite-image placement, atomic direct finalization, preserved original/signed history, approved placement-only edits, and native Draft Invoice generation.
 
-**Not complete and not accepted parity:** full donor financial parsing/correction/mapping, stamp/signature/title asset configuration, coordinate placement/export, finalization transaction, approved placement-only edit, and Invoice runtime. These must be completed and verified before claiming the three-step workflow is implemented. No new release number or deployment is made for these preliminary corrections.
+This is characterized runtime coverage, not accepted full DGC parity. Unknown/ambiguous financial PDF layouts remain blocked; Invoice issue/AR/payment and full donor reporting are separate remaining work. The owner authorized one combined GST image containing stamp, signature and signer title/name instead of the donor's three separate images.
 
 GST signing assets must be supplied/identified explicitly. Do not copy DGC/DIGICOM stamps or signatures into GST, invent signatures, alter permissions, or import live financial records as fixtures.
