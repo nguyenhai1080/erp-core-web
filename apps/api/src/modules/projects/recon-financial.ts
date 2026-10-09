@@ -19,6 +19,24 @@ const moneyPattern='(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)\\.[0-9]{2}';
 const tokens=(s:string)=>[...s.matchAll(new RegExp(moneyPattern,'g'))].map(m=>r(n(m[0])));
 const key=(s:string)=>normalizeService(s).replace(/[^A-Z0-9]/g,'');
 function summary(values:string[]):Amounts{return Object.fromEntries(fields.map((f,i)=>[f,values[i]])) as Amounts;}
+// Poppler -layout retains physical columns. A multiline service cell may put
+// its name above/below a numbered row whose money cells are on the middle line.
+// Join only standalone text wholly inside that row's service-name column.
+// Raw extracted text and the original PDF are never modified in storage.
+function unwrapServiceCells(raw:string){
+ const lines=raw.replace(/\r/g,'').split('\n');let changed=false;
+ for(let i=1;i<lines.length-1;i++){
+  const row=lines[i],m=row.match(new RegExp('^(\\s*)(\\d{1,3})(\\s+)(?='+moneyPattern+')'));
+  if(!m||!/\bIn\s+MZN\b/i.test(lines.slice(i+1).join('\n')))continue;
+  const start=m[1].length+m[2].length+1,end=m[0].length;
+  const cell=(line:string)=>{const name=line.slice(start,end).trim();return name&&name===line.trim()&&/^[A-Za-z][A-Za-z0-9_() /&+.-]{0,59}$/.test(name)?name:'';};
+  const before=cell(lines[i-1]),after=cell(lines[i+1]);
+  if(!before||!after)continue;
+  const name=before+' '+after;if(name.length>60)continue;
+  lines[i]=m[1]+m[2]+' '+name+' '+row.slice(end);lines[i-1]='';lines[i+1]='';changed=true;
+ }
+ return {text:lines.join('\n'),changed};
+}
 function summaries(text:string,errors:string[]){
  const result:Partial<Record<'MZN'|'USD',Amounts>>={};
  for(const currency of ['MZN','USD'] as const){
@@ -56,7 +74,8 @@ function historical(text:string,errors:string[],warnings:string[]):{a:Amounts;fx
  return {a:{totalServiceRevenue:gross,ivaTax:r(D(received).minus(sharing)),serviceRevenueForSharing:sharing,remunerationProvider:revenue,wht,partnerRevenue:payable},fx:D(payable).div(dollars.at(-1)!).toFixed(12)};
 }
 export function parseReconFinancial(raw:string):Financial{
- const p=parseReconIdentity(raw),text=raw.replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim(),errors:string[]=[],warnings:string[]=[];
+ const wrapped=unwrapServiceCells(raw),p=parseReconIdentity(raw),text=wrapped.text.replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim(),errors:string[]=[],warnings:string[]=[];
+ if(wrapped.changed)warnings.push('Tên dịch vụ nhiều dòng đã ghép theo cột trong PDF; kiểm tra lại trên bản gốc.');
  let fx=p.exchangeRate,source='EXACT_TABLE',details:Detail[]=[],s=summaries(text,errors);
  if(fx&&D(fx).lte(0))fx=null;
  const legacy=historical(text,errors,warnings);
@@ -92,6 +111,11 @@ export function parseReconFinancial(raw:string):Financial{
   if(bundle){
    const children=details.filter(d=>key(d.serviceName)!==key(p.service));
    if(children.length!==3||!['VOICEMAIL','ISIGN','MCA'].every(v=>children.some(d=>key(d.serviceName)===v)))errors.push('Bảng gộp MCAVM-ISIGN chưa đọc đủ ba dòng con VOICEMAIL/ISIGN/MCA.');
+   else details=children;
+  }
+  if(key(p.service)==='MEUBEAT'&&/\bMEUBEAT[ _-]+APP\b/i.test(text)&&/\bMEUBEAT[ _-]+IVR\b/i.test(text)){
+   const children=details.filter(d=>key(d.serviceName)!==key(p.service));
+   if(children.length!==2||!['MEUBEATAPP','MEUBEATIVR'].every(v=>children.some(d=>key(d.serviceName)===v)))errors.push('MEUBEAT chưa đọc đủ hai dòng con MEUBEAT APP và MEUBEAT IVR.');
    else details=children;
   }
  }

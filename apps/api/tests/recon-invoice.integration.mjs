@@ -17,7 +17,7 @@ if(!new URL(process.env.DATABASE_URL).pathname.startsWith('/erp_execution_accept
 const storage=await mkdtemp(resolve(tmpdir(),'erp-finance-'));process.env.STORAGE_ROOT=storage;
 const company=await prisma.company.upsert({where:{companyCode:'GST'},create:{companyCode:'GST',companyName:'Synthetic GST test company'},update:{}}),marker=randomUUID();
 const other=await prisma.company.create({data:{companyCode:'FOREIGN_'+marker,companyName:'Synthetic foreign company'}});
-const permissions=['RECON_VIEW','RECON_UPLOAD','RECON_REVIEW','RECON_APPROVE','INVOICE_VIEW','INVOICE_CREATE','SYSTEM_CONFIG_EDIT'];
+const permissions=['RECON_VIEW','RECON_UPLOAD','RECON_REVIEW','RECON_APPROVE','INVOICE_VIEW','INVOICE_CREATE','INVOICE_ISSUE','REVENUE_VIEW','AR_VIEW','SYSTEM_CONFIG_EDIT'];
 const ps=await Promise.all(permissions.map(code=>prisma.permission.upsert({where:{code},create:{code,name:code,module:'FIXTURE'},update:{}})));
 const user=await prisma.user.create({data:{companyId:company.id,email:marker+'@example.test',fullName:'Synthetic finance test',passwordHash:'unused-local-session-fixture'}});
 const role=await prisma.role.create({data:{companyId:company.id,code:marker,name:'Synthetic role',permissions:{create:ps.map(p=>({permissionId:p.id}))}}});await prisma.userRole.create({data:{userId:user.id,roleId:role.id}});
@@ -92,6 +92,43 @@ try{
  check((await post('/api/v1/invoices/create',brokenPlacements)).statusCode,400);check(await prisma.invoice.count({where:{partnerId:partner2.id}}),0);check(await fileCount(),beforeFiles);
  check((await post('/api/v1/invoices/preview',separateSelection)).json().digest,separatePlan.digest);
  const separateCreated=await post('/api/v1/invoices/create',separateBody);check(separateCreated.statusCode,201);check(separateCreated.json().items.length,2);check(await prisma.invoice.count({where:{partnerId:partner2.id,isCurrent:true}}),2);
+ // Issue and AR are one atomic workflow; previews never create financial records.
+ const issueIds=separateCreated.json().items.map(i=>i.id),issuePath='/api/v1/invoices/'+issueIds[0];
+ const revenueList=(await request('GET','/api/v1/revenues?period=2026-01&partnerId='+partner2.id)).json();
+ check(revenueList.total,2);check(revenueList.monthlyPayableUsd,'5.59');
+ const revenueDetails=(await request('GET','/api/v1/revenues?period=2026-01&partnerId='+partner2.id+'&details=true')).json();check(revenueDetails.total,5);check(revenueDetails.monthlyPayableUsd,'5.59');
+ const arPath='/api/v1/receivables?asOf=2026-03-19&partnerId='+partner2.id;
+ check((await request('GET',arPath)).json().total,0);
+ check((await request('POST',issuePath+'/issue-preview',{},foreignHeaders)).statusCode,404);
+ check((await request('POST',issuePath+'/issue-preview',{}, {'x-csrf-token':'bad'})).statusCode,403);
+ const issuePermission=ps.find(p=>p.code==='INVOICE_ISSUE');await prisma.rolePermission.delete({where:{roleId_permissionId:{roleId:role.id,permissionId:issuePermission.id}}});check((await post(issuePath+'/issue-preview',{})).statusCode,403);await prisma.rolePermission.create({data:{roleId:role.id,permissionId:issuePermission.id}});
+ const ipResponse=await post(issuePath+'/issue-preview',{});check(ipResponse.statusCode,200);const ip=ipResponse.json();check(ip.items.length,2);check(await prisma.accountReceivable.count({where:{companyId:company.id}}),0);
+ const issueBody={digest:ip.digest,confirmedSent:true};
+ check((await post(issuePath+'/issue',{...issueBody,digest:'0'.repeat(64)})).statusCode,409);check((await post(issuePath+'/issue',{...issueBody,confirmedSent:false})).statusCode,400);
+ const secondInvoice=await prisma.invoice.findUniqueOrThrow({where:{id:issueIds[1]}});
+ await prisma.invoice.update({where:{id:secondInvoice.id},data:{payableAmount:secondInvoice.payableAmount.plus(1)}});
+ check((await post(issuePath+'/issue',issueBody)).statusCode,409);check(await prisma.accountReceivable.count({where:{companyId:company.id}}),0);check((await prisma.invoice.findUnique({where:{id:issueIds[0]}})).status,'DRAFT');
+ await prisma.invoice.update({where:{id:secondInvoice.id},data:{payableAmount:secondInvoice.payableAmount}});
+ const sourceScope=await prisma.invoiceScope.findFirstOrThrow({where:{invoiceId:issueIds[0]},include:{items:{include:{revenue:true}}}});
+ const sourceRecon=sourceScope.items[0].revenue.reconciliationId;
+ await prisma.reconciliation.update({where:{id:sourceRecon},data:{status:'CANCELLED'}});check((await post(issuePath+'/issue-preview',{})).statusCode,409);await prisma.reconciliation.update({where:{id:sourceRecon},data:{status:'APPROVED'}});
+ const freshIssue=(await post(issuePath+'/issue-preview',{})).json();
+ // Inject a database failure after the first AR write; the entire issue batch must roll back.
+ if(!/^[a-f0-9-]{36}$/.test(secondInvoice.id))throw new Error('Unexpected synthetic UUID');
+ await prisma.$executeRawUnsafe("ALTER TABLE account_receivables ADD CONSTRAINT acceptance_no_second_ar CHECK (invoice_id <> '"+secondInvoice.id+"'::uuid)");
+ check((await post(issuePath+'/issue',{digest:freshIssue.digest,confirmedSent:true})).statusCode,500);
+ check(await prisma.accountReceivable.count({where:{companyId:company.id}}),0);check(await prisma.invoice.count({where:{id:{in:issueIds},status:'DRAFT'}}),2);
+ await prisma.$executeRawUnsafe('ALTER TABLE account_receivables DROP CONSTRAINT acceptance_no_second_ar');
+
+ const races=await Promise.all([post(issuePath+'/issue',{digest:freshIssue.digest,confirmedSent:true}),post(issuePath+'/issue',{digest:freshIssue.digest,confirmedSent:true})]);check(races.map(r=>r.statusCode).sort(),[200,409]);
+ check(await prisma.accountReceivable.count({where:{companyId:company.id}}),2);
+ for(const id of issueIds){const issued=await prisma.invoice.findUniqueOrThrow({where:{id},include:{receivable:true}});check(issued.status,'ISSUED');check(issued.issuedById,user.id);check(!!issued.issuedAt,true);check(issued.receivable.originalAmount.toFixed(2),issued.payableAmount.toFixed(2));check(issued.receivable.paidAmount.toFixed(2),'0.00');check(issued.receivable.outstandingAmount.toFixed(2),issued.payableAmount.toFixed(2));}
+ check((await post(issuePath+'/issue-preview',{})).statusCode,409);check((await post('/api/v1/invoices/'+inv.id+'/issue-preview',{})).statusCode,409);check((await post('/api/v1/invoices/'+newId+'/issue-preview',{})).statusCode,409);
+ const ars=(await request('GET',arPath)).json();check(ars.total,2);check(ars.totals,{original:'5.59',paid:'0.00',outstanding:'5.59'});check(ars.items.every(a=>a.status==='OVERDUE'&&a.agingDays===1),true);
+ check((await request('GET',arPath.replace('2026-03-19','2026-03-18'))).json().items.every(a=>a.status==='OPEN'&&a.agingDays===0),true);
+ check((await request('GET',arPath,undefined,foreignHeaders)).json().total,0);check((await request('GET','/api/v1/receivables?asOf=invalid')).statusCode,400);
+ check((await request('GET','/api/v1/revenues?details=true&partnerId='+partner2.id)).json().items.every(v=>v.status==='INVOICED'),false); // CHILD remains approved detail; only TOTAL is billed.
+ check((await request('GET','/api/v1/revenues?partnerId='+partner2.id)).json().items.every(v=>v.status==='INVOICED'),true);
  // Placement uses actual visual crop box for every orthogonal rotation.
  const square=await sharp({create:{width:100,height:100,channels:3,background:'#d80000'}}).png().toBuffer();
  for(const rotation of [0,90,180,270]){const doc=await PDFDocument.create(),page=doc.addPage([300,200]);page.setCropBox(20,15,260,170);page.setRotation(degrees(rotation));const source=Buffer.from(await doc.save({useObjectStreams:false}));const signed=await stampPdf(source,square,'image/png',{page:1,x:.2,y:.2,width:.15});const rendered=await previewReconPage(signed,1),{data:pix,info}=await sharp(rendered).removeAlpha().raw().toBuffer({resolveWithObject:true});const x=Math.floor(info.width*.25),y=Math.floor(info.height*(.2+.075*info.width/info.height)),idx=(y*info.width+x)*info.channels;check(pix[idx]>150&&pix[idx+1]<50&&pix[idx+2]<50,true);}

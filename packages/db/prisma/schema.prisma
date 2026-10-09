@@ -1865,6 +1865,8 @@ model Invoice {
   whtAmount Decimal @map("wht_amount") @db.Decimal(20,4)
   payableAmount Decimal @map("payable_amount") @db.Decimal(20,4)
   paidAmount Decimal @default(0) @map("paid_amount") @db.Decimal(20,4)
+  issuedAt DateTime? @map("issued_at")
+  issuedById String? @map("issued_by_id") @db.Uuid
   snapshot Json
   documentId String @map("document_id") @db.Uuid
   createdById String @map("created_by_id") @db.Uuid
@@ -1876,10 +1878,29 @@ model Invoice {
   document Document @relation(fields: [documentId], references: [id])
   createdBy User @relation(fields: [createdById], references: [id])
   scopes InvoiceScope[]
+  receivable AccountReceivable?
+  @@unique([companyId,id])
   @@unique([companyId,invoiceNumber])
   @@unique([companyId,businessKey,revisionNo])
   @@index([companyId,partnerId,period])
   @@map("invoices")
+}
+
+// One AR is created atomically on explicit Invoice issue, never on draft creation.
+model AccountReceivable {
+  id String @id @default(uuid()) @db.Uuid
+  companyId String @map("company_id") @db.Uuid
+  invoiceId String @map("invoice_id") @db.Uuid
+  originalAmount Decimal @map("original_amount") @db.Decimal(20,4)
+  paidAmount Decimal @default(0) @map("paid_amount") @db.Decimal(20,4)
+  outstandingAmount Decimal @map("outstanding_amount") @db.Decimal(20,4)
+  status String @default("OPEN") @db.VarChar(30)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  invoice Invoice @relation(fields:[companyId,invoiceId],references:[companyId,id])
+  @@unique([companyId,invoiceId])
+  @@index([companyId,status])
+  @@map("account_receivables")
 }
 
 model InvoiceScopeItem {

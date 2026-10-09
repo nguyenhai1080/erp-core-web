@@ -44,6 +44,28 @@ check(parseReconFinancial(absentRates.replace('3 MCA 1,160.00','3 MCA 9,160.00')
 check(parseReconFinancial(singleText.replace('10.00% 100.00% ','').replace('100.00 10.00 90.00','100.00 90.00')).ready,false);
 check(parseReconFinancial(bundleText.replaceAll('100.00%','101.00%')).ready,false);
 check(parseReconFinancial(bundleText.replace(/3 MCA.*\n/,'')+'\n3 MCA 1,160.00 160.00 0.00 1,000.00 10.00% 100.00% 100.00 10.00 90.00').ready,false);
+// Fabricated amounts reproduce the physical multiline service-cell shape of
+// the owner's MEUBEAT PDF without copying its business figures into fixtures.
+export const meubeatWrappedText=`STATEMENT CONFIRMATION ON SHARING REVENUE OF MEUBEAT BETWEEN
+Service: MEUBEAT
+Period: Jan-2026
+Exchange rate: 64.5
+        MEUBEAT
+1                                       1,160.00 160.00 0.00 1,000.00 10.00% 100.00% 100.00 10.00 90.00
+        APP
+2 MEUBEAT IVR 1,160.00 160.00 0.00 1,000.00 10.00% 100.00% 100.00 10.00 90.00
+In MZN 2,320.00 320.00 2,000.00 200.00 20.00 180.00
+In USD 35.97 4.96 31.01 3.10 0.31 2.79
+The Total revenue in January of SYNTHETIC is: 2.79 USD
+(In word: Two Dollars and Seventy Nine Cents)`;
+const wrapped=parseReconFinancial(meubeatWrappedText);
+check(wrapped.ready,true);check(wrapped.details.map(v=>v.serviceName),['MEUBEAT_APP','MEUBEAT_IVR','MEUBEAT']);
+check(wrapped.details.map(v=>v.rowType),['CHILD','CHILD','TOTAL']);check(wrapped.usd.partnerRevenue,'2.79');
+check(wrapped.details.filter(v=>v.rowType==='TOTAL').length,1);check(wrapped.warnings.length,1);
+check(parseReconFinancial(meubeatWrappedText.replace('        APP','        APP 99')).ready,false);
+check(parseReconFinancial(meubeatWrappedText.replace('        APP',' '.repeat(50)+'APP')).ready,false);
+check(parseReconFinancial(meubeatWrappedText.replace(/2 MEUBEAT IVR.*\n/,'')).ready,false);
+check(parseReconFinancial(meubeatWrappedText.replace('200.00 20.00 180.00','201.00 20.00 180.00')).ready,false);
 const edited=correctFinancial(b,[{lineNo:1,revenueMzn:'200'}],'Synthetic verified correction');check(edited.details[0].wht,'20.00');check(edited.details[0].partnerRevenue,'180.00');check(edited.mzn.remunerationProvider,'400.00');check(edited.mzn.wht,'40.00');check(edited.usd.partnerRevenue,'5.58');check(edited.details.at(-1).usd.partnerRevenue,'5.58');
 check(correctFinancial(a,[{lineNo:1,revenueMzn:'100.00'}],'unchanged').usd.partnerRevenue,'1.40');
 assert.throws(()=>correctFinancial(b,[{lineNo:4,revenueMzn:'200'}],'bad'));checks++;

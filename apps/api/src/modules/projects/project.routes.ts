@@ -9,6 +9,7 @@ import { serviceContractRoutes } from './service-contracts.js';
 import { outputReconRoutes } from './output-recon.js';
 import { reconFinalizeRoutes } from './recon-finalize.js';
 import { invoiceRoutes } from './invoices.js';
+import { financeLedgerRoutes } from './finance-ledger.js';
 const projectId = (input: unknown) => parse(z.object({ id: z.uuid() }), input).id;
 const childIds = (input: unknown) => parse(z.object({ id: z.uuid(), child: z.uuid() }), input);
 const budgetSchema = z.object({ currency, amount: money, reason: text, expectedRevisionNo: z.number().int().min(0) }).strict();
@@ -34,6 +35,7 @@ export async function projectRoutes(app: FastifyInstance, config: AuthConfig) {
   await app.register(outputReconRoutes, config);
   await app.register(reconFinalizeRoutes, config);
   await app.register(invoiceRoutes, config);
+  await app.register(financeLedgerRoutes, config);
   app.get('/api/v1/projects', { preHandler: requirePermission('PROJECT_VIEW') }, async request => ({
     items: await prisma.project.findMany({ where: projectAccessWhere(request.auth!), take: 100, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       select: { id: true, projectCode: true, projectName: true, status: true, progressPercent: true, currency: true } }), limit: 100
