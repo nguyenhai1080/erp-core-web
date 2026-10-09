@@ -22,3 +22,17 @@ h1{font-size:28px;line-height:1.2;margin:0 0 6px}h2{font-size:20px;line-height:1
 
 .recon-raw { white-space:pre-wrap; overflow-wrap:anywhere; max-height:380px; overflow:auto; padding:16px; background:#f0f5fa; }
 .recon-match { background:#e6f7ed; color:#165c36; }
+.recon-original-preview {margin-top:20px;border-top:1px solid #d8e2ef;padding-top:16px}
+.recon-original-preview>img {display:block;width:100%;height:auto;border:1px solid #d8e2ef;background:white}
+.recon-original-preview select {min-width:80px}
+.financial-review { margin-top: 24px; border-top: 1px solid #d9e2ed; padding-top: 14px; }
+.financial-review td input { min-width: 110px; max-width: 150px; }
+.financial-total { background: #edf4fa; font-weight: 600; }
+.number { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.signing-canvas { position: relative; margin: 16px 0; width: 100%; border: 1px solid #d9e2ed; background: white; }
+.signing-canvas .scan-image { display: block; width: 100%; height: auto; }
+.signing-canvas .signing-overlay { position: absolute; height: auto; cursor: move; touch-action: none; border: 1px dashed #1f507c; }
+.invoice-canvas { max-width: 850px; }
+.invoice-preview article { border-top: 1px solid #d9e2ed; margin: 24px 0; padding: 16px 0; }
+.check-label { display: flex; align-items: center; gap: 10px; margin: 18px 0; }
+.check-label input { width: auto; margin: 0; }

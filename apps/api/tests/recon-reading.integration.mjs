@@ -38,7 +38,26 @@ async function upload(pdf=textPdf,period='2026-10'){
  const selection={partnerId:partner.id,serviceId:service.id,period};const pre=(await request('GET',base+'/preflight?'+new URLSearchParams(selection))).json();const res=await request('POST',base+'/uploads',{...selection,filename:'Local fixture.pdf',base64:pdf.toString('base64'),fingerprint:pre.fingerprint,confirmNewVersion:true});check(res.statusCode,201);return res.json().item;
 }
 try{
+ const inspectBody={partnerId:partner.id,filename:'Local fixture.pdf',base64:textPdf.toString('base64')};
+ check((await request('POST',base+'/inspect',inspectBody,{cookie:''})).statusCode,401);
+ check((await request('POST',base+'/inspect',inspectBody,{'x-csrf-token':'bad'})).statusCode,403);
+ check((await request('POST',base+'/inspect',{...inspectBody,partnerId:randomUUID()})).statusCode,404);
+ check((await request('POST',base+'/inspect',{...inspectBody,serviceId:service.id})).statusCode,400);
+ const detected=await request('POST',base+'/inspect',inspectBody);check(detected.statusCode,200);
+ check(detected.json().selection,{partnerId:partner.id,serviceId:service.id,period:'2026-10'});check(detected.json().preflight.action,'ALLOW_INTAKE');
+ check(await prisma.outputReconUpload.count({where:{companyId:company.id}}),0);
+ check(await prisma.attachment.count({where:{companyId:company.id}}),0);
+ const ambiguous=await prisma.service.create({data:{companyId:company.id,serviceKey:'OTHER',serviceCode:'OTHER',serviceName:'MOVTV',category:'OTHER'}});
+ check((await request('POST',base+'/inspect',inspectBody)).json().selection,null);
+ await prisma.service.update({where:{id:ambiguous.id},data:{serviceName:'Other unrelated fixture'}});
+ const detectedScan=await request('POST',base+'/inspect',{...inspectBody,base64:(await fixture('scan')).toString('base64')});check(detectedScan.statusCode,200);check(detectedScan.json().selection.period,'2026-10');
  let item=await upload();const detail=base+'/uploads/'+item.id,read=detail+'/read',body={expectedUpdatedAt:item.updatedAt};
+ const preview=detail+'/preview';
+ check((await request('GET',preview,undefined,{cookie:''})).statusCode,401);
+ check((await request('GET',preview+'?page=0')).statusCode,400);
+ check((await request('GET',preview+'?page=2')).statusCode,422);
+ check((await request('GET',preview+'?page=1&companyId='+other.id)).statusCode,400);
+ const pagePreview=await request('GET',preview);check(pagePreview.statusCode,200);check(pagePreview.headers['content-type'],'image/png');check(pagePreview.headers['cache-control'],'no-store');check(pagePreview.rawPayload.subarray(0,8).toString('hex'),'89504e470d0a1a0a');check(pagePreview.rawPayload.readUInt32BE(16)>0,true);check(pagePreview.rawPayload.readUInt32BE(20)>pagePreview.rawPayload.readUInt32BE(16),true);
  check((await request('GET',detail,undefined,{cookie:''})).statusCode,401);check((await request('POST',read,body,{'x-csrf-token':'bad'})).statusCode,403);check((await request('POST',read,body,{origin:'https://other.test'})).statusCode,403);
  check((await request('POST',read,{...body,rawText:'spoofed'})).statusCode,400);check((await request('GET',base+'/uploads/'+randomUUID())).statusCode,404);check((await request('POST',base+'/uploads/'+randomUUID()+'/read',body)).statusCode,404);
  check((await request('GET',detail)).json().rawText,null);
