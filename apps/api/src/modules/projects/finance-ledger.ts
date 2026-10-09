@@ -5,6 +5,7 @@ import {requirePermission,type AuthConfig} from '../auth/access.js';
 import {audit,CommandError,date,parse,writeGuard} from './commands.js';
 import {financialPeriodLock} from './recon-finalize.js';
 import {derivedBytes,sha} from './financial-documents.js';
+import {dashboardSummary} from './dashboard-summary.js';
 
 const D=(v:string|Prisma.Decimal)=>new Prisma.Decimal(v);
 const fixed=(v:Prisma.Decimal)=>v.toDecimalPlaces(2,Prisma.Decimal.ROUND_HALF_UP).toFixed(2);
@@ -68,6 +69,11 @@ async function issuePlan(tx:Prisma.TransactionClient,companyId:string,id:string)
  return {selected,candidates,digest};
 }
 export async function financeLedgerRoutes(app:FastifyInstance,config:AuthConfig){
+ app.get('/api/v1/dashboard/revenue',{preHandler:requirePermission('REVENUE_VIEW')},async request=>{
+  const companyId=request.auth!.companyId;
+  const rows=await prisma.revenue.findMany({where:{companyId,currency:'USD',partner:{companyId},service:{companyId},contract:{companyId},isCurrent:true,status:{in:['INVOICE_READY','INVOICED','PARTIALLY_PAID','PAID']},reconciliation:{companyId,isCurrent:true,status:'APPROVED'},calculationJson:{path:['dgc'],equals:true}},select:{periodStart:true,serviceId:true,service:{select:{serviceName:true}},netAmount:true,calculationJson:true}});
+  return dashboardSummary(rows);
+ });
  app.post('/api/v1/invoices/:id/issue-preview',{onRequest:writeGuard('INVOICE_ISSUE',config)},async request=>{
   const {id}=parse(idSchema,request.params);parse(z.object({}).strict(),request.body);
   return prisma.$transaction(async tx=>{const p=await issuePlan(tx,request.auth!.companyId,id);return {digest:p.digest,mode:p.selected.invoiceMode,items:p.candidates.map(i=>({id:i.id,invoiceNumber:i.invoiceNumber,payableAmount:fixed(i.payableAmount),dueDate:i.dueDate})),message:'Xác nhận Invoice đã gửi cho đối tác. Mỗi Invoice được phát hành sẽ tạo một khoản phải thu USD.'};},{isolationLevel:'RepeatableRead',timeout:30000});
