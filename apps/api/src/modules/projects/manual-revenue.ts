@@ -14,7 +14,7 @@ import {D,equivalents,nativeAmount,reportingRates} from './revenue-money.js';
 import {spreadsheetRows} from './revenue-import.js';
 
 const period=z.string().regex(/^20\d{2}-(0[1-9]|1[0-2])$/),amount=z.string().regex(/^(0|[1-9]\d{0,13})(\.\d{1,2})?$/),fx=z.string().regex(/^[1-9]\d{0,7}(\.\d{1,8})?$/);
-const rowSchema=z.object({period,serviceId:z.uuid(),contractId:z.uuid(),currency:z.enum(['USD','VND']),amount,deduction:amount.default('0'),fxRate:fx,note:z.string().trim().max(2000).default('')}).strict();
+const rowSchema=z.object({period,serviceId:z.uuid(),contractId:z.uuid(),currency:z.enum(['USD','VND']),amount,deduction:amount.default('0'),fxRate:fx.or(z.literal('')).nullish(),note:z.string().trim().max(2000).default('')}).strict();
 const fileSchema=z.object({filename:z.string().trim().min(1).max(200),base64:z.string().max(7*1024*1024)}).strict();
 type Entry=z.infer<typeof rowSchema>;
 const id=(v:unknown)=>parse(z.object({id:z.uuid()}).strict(),v).id;
@@ -22,8 +22,10 @@ const dates=(p:string)=>{const start=new Date(p+'-01'),end=new Date(Date.UTC(sta
 function fail(message:string):never{throw new CommandError(409,message);}
 function normalize(row:Entry){
  const a=D(row.amount),w=D(row.deduction);if(!a.gt(0)||w.gt(a)||row.currency==='VND'&&(!a.isInteger()||!w.isInteger()))fail('Số GST được hưởng phải dương; VND là số nguyên, khấu trừ không vượt doanh thu.');
- return {...row,amount:nativeAmount(a,row.currency),deduction:nativeAmount(w,row.currency),payable:nativeAmount(a.minus(w),row.currency),fxRate:D(row.fxRate).toFixed(),...equivalents(a,row.currency,row.fxRate)};
+ const rate=row.fxRate?D(row.fxRate).toFixed():null;
+ return {...row,amount:nativeAmount(a,row.currency),deduction:nativeAmount(w,row.currency),payable:nativeAmount(a.minus(w),row.currency),fxRate:rate,...equivalents(a,row.currency,rate)};
 }
+export const normalizeManualRevenueInput=(value:unknown)=>normalize(parse(rowSchema,value));
 async function binding(tx:Prisma.TransactionClient,companyId:string,partnerId:string,row:Entry){
  const {start,end}=dates(row.period),c=await tx.contract.findFirst({where:{companyId,id:row.contractId,partnerId,dgcDirection:'Output',status:'ACTIVE',AND:[{OR:[{effectiveDate:null},{effectiveDate:{lte:end}}]},{OR:[{expiryDate:null},{expiryDate:{gte:start}}]}]},include:{services:true}});
  const s=await tx.service.findFirst({where:{companyId,id:row.serviceId,status:'ACTIVE'}});

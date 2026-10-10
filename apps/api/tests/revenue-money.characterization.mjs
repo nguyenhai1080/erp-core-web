@@ -5,11 +5,17 @@ import {equivalents,nativeAmount} from '../dist/modules/projects/revenue-money.j
 import {spreadsheetRows,csvRows} from '../dist/modules/projects/revenue-import.js';
 import {dashboardSummary} from '../dist/modules/projects/dashboard-summary.js';
 import {nativeVndPayment} from '../dist/modules/projects/invoice-payments.js';
+import {normalizeManualRevenueInput} from '../dist/modules/projects/manual-revenue.js';
 let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++;},reject=f=>{assert.throws(f);checks++;};
 eq(equivalents('25000000','VND','25000'),{usd:'1000.00',vnd:'25000000'});
 eq(equivalents('1000','USD','25000'),{usd:'1000.00',vnd:'25000000'});
 eq(equivalents('1000','USD'),{usd:'1000.00',vnd:null});
 eq(equivalents('25000000','VND'),{usd:null,vnd:'25000000'});
+const input={period:'2026-03',serviceId:'00000000-0000-4000-8000-000000000001',contractId:'00000000-0000-4000-8000-000000000002',currency:'VND',amount:'15904315',deduction:'0',note:''};
+for(const fxRate of ['',null,undefined]){const v=normalizeManualRevenueInput({...input,fxRate});eq({usd:v.usd,vnd:v.vnd,fxRate:v.fxRate},{usd:null,vnd:'15904315',fxRate:null});}
+reject(()=>normalizeManualRevenueInput({...input,fxRate:'0'}));
+reject(()=>normalizeManualRevenueInput({...input,fxRate:'bad'}));
+const historical=normalizeManualRevenueInput({...input,amount:'19564497',fxRate:'25969'});eq({usd:historical.usd,vnd:historical.vnd},{usd:'753.38',vnd:'19564497'});
 reject(()=>equivalents('1000','USD','0'));reject(()=>equivalents('1000','EUR','25000'));
 eq(nativeAmount('5463368.2','VND'),'5463368');eq(nativeAmount('1.005','USD'),'1.01');
 eq(csvRows('a,b\r\n"quoted, comma","double ""quote"""\r\n'),[['a','b'],['quoted, comma','double "quote"']]);
