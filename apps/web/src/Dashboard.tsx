@@ -7,7 +7,7 @@ const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov',
 export function Dashboard({request,permissions}:Props){
  const canRevenue=permissions.includes('REVENUE_VIEW'),canAR=permissions.includes('AR_VIEW');
  const [data,setData]=useState<Data|null>(null),[ar,setAr]=useState<any[]|null>(null),[error,setError]=useState(''),[arError,setArError]=useState(''),[busy,setBusy]=useState(false);
- const [year,setYear]=useState(String(new Date().getFullYear())),[service,setService]=useState('all'),[metric,setMetric]=useState<'revenue'|'payable'|'wht'|'company'>('revenue');
+ const [year,setYear]=useState(String(new Date().getFullYear())),[service,setService]=useState('all');
  const [currency,setCurrency]=useState<'USD'|'VND'>('USD');
  const sequence=useRef(0);
  async function load(){
@@ -20,7 +20,8 @@ export function Dashboard({request,permissions}:Props){
  useEffect(()=>{void load();return()=>{sequence.current++;};},[request,canRevenue,canAR]);
  const years=[...new Set([String(new Date().getFullYear()),...(data?.series.map(r=>r.period.slice(0,4))??[])])].sort().reverse();
  const rows=(data?.series??[]).filter(r=>r.period.startsWith(year+'-')&&(service==='all'?r.total:r.serviceId===service));
- const values=Array.from({length:12},(_,i)=>rows.filter(r=>Number(r.period.slice(5))===i+1).reduce((sum,r)=>sum+Math.round(Number((r as any)[(metric==='company'?'payable':metric)+(currency==='VND'?'Vnd':'')])*100),0)/100);
+ // GST revenue is the payable entitlement after deductions, in either reporting currency.
+ const values=Array.from({length:12},(_,i)=>rows.filter(r=>Number(r.period.slice(5))===i+1).reduce((sum,r)=>sum+Math.round(Number(currency==='VND'?r.payableVnd:r.payable)*100),0)/100);
  const incomplete=rows.some(r=>currency==='USD'?r.missingUsd>0:r.missingVnd>0);
  const sum=values.reduce((s,v)=>s+Math.round(v*100),0)/100,max=Math.max(...values,1);
  return <div className="dashboard"><section className="cards dashboard-kpis">
@@ -32,7 +33,6 @@ export function Dashboard({request,permissions}:Props){
  <section className="panel"><h2>Biểu đồ doanh thu dịch vụ theo tháng</h2>
  <div className="dashboard-filters"><label><span className="sr-only">Năm doanh thu</span><select aria-label="Năm doanh thu" value={year} onChange={e=>setYear(e.target.value)}>{years.map(v=><option key={v}>{v}</option>)}</select></label>
  <label><span className="sr-only">Dịch vụ</span><select aria-label="Dịch vụ" value={service} onChange={e=>setService(e.target.value)}><option value="all">Tất cả dịch vụ</option>{data?.services.map(v=><option key={v.id} value={v.id}>{v.name}</option>)}</select></label>
- <label><span className="sr-only">Loại số tiền</span><select aria-label="Loại số tiền" value={metric} onChange={e=>setMetric(e.target.value as typeof metric)}><option value="revenue">Tổng doanh thu</option><option value="payable">Sau khấu trừ</option><option value="wht">Khấu trừ</option><option value="company">Company Share</option></select></label>
  <label>Tiền tệ<select aria-label="Tiền tệ báo cáo" value={currency} onChange={e=>setCurrency(e.target.value as 'USD'|'VND')}><option>USD</option><option>VND</option></select></label><button disabled={busy} onClick={()=>void load()}>{busy?'Đang tải…':'Refresh'}</button></div>
  {error&&<p className="notice" role="alert">{error}</p>}{arError&&<p className="notice" role="alert">{arError}</p>}
  {!canRevenue?<p>Không có quyền xem doanh thu.</p>:data&&<><div className="dashboard-summary"><span>Tổng: <b>{incomplete?'Chưa đủ tỷ giá':money(sum)} {currency}</b></span><span>Năm: <b>{year}</b></span></div>
