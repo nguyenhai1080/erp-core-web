@@ -24,12 +24,13 @@ export function paymentAmounts(original:string,alreadyPaid:string,usd:string,vnd
  const paidAfter=paid.plus(next),outstanding=total.minus(paidAfter);
  return {paidAfter,outstanding,rate,status:outstanding.lte('.01')?'PAID' as const:'PARTIALLY_PAID' as const};
 }
+export function nativeVndPayment(original:string,paid:string,next:string){const total=D(original),old=D(paid),cash=D(next);if(!total.isInteger()||!old.isInteger()||!cash.isInteger()||!cash.gt(0)||old.lt(0)||cash.gt(total.minus(old)))fail('Tiền thu VND vượt số dư hoặc không hợp lệ.');const paidAfter=old.plus(cash),outstanding=total.minus(paidAfter);return {paidAfter,outstanding,rate:D('1'),status:outstanding.isZero()?'PAID' as const:'PARTIALLY_PAID' as const};}
 export async function invoicePaymentRoutes(app:FastifyInstance,config:AuthConfig){
  app.get('/api/v1/invoices/:id/payments',{preHandler:requirePermission('PAYMENT_VIEW')},async request=>{
   const invoice=await prisma.invoice.findFirst({where:{companyId:request.auth!.companyId,id:id(request.params)},include:{receivable:true}});
   if(!invoice)throw new CommandError(404,'Không tìm thấy Invoice.');
   const items=await prisma.invoicePayment.findMany({where:{companyId:invoice.companyId,invoiceId:invoice.id},orderBy:[{paymentDate:'desc'},{createdAt:'desc'}]});
-  return {invoice:{id:invoice.id,invoiceNumber:invoice.invoiceNumber,status:invoice.status,updatedAt:invoice.updatedAt,payable:invoice.payableAmount.toFixed(2),paid:invoice.paidAmount.toFixed(2),outstanding:invoice.receivable?.outstandingAmount.toFixed(2)??null},items};
+  return {invoice:{id:invoice.id,invoiceNumber:invoice.invoiceNumber,currency:invoice.currency,status:invoice.status,updatedAt:invoice.updatedAt,payable:invoice.payableAmount.toFixed(2),paid:invoice.paidAmount.toFixed(2),outstanding:invoice.receivable?.outstandingAmount.toFixed(2)??null},items};
  });
  app.post('/api/v1/invoices/:id/payments',{bodyLimit:8*1024*1024,onRequest:writeGuard('PAYMENT_POST',config)},async request=>{
   const user=request.auth!,invoiceId=id(request.params),body=parse(bodySchema,request.body),digest=sha(JSON.stringify({invoiceId,...body}));
@@ -55,20 +56,21 @@ export async function invoicePaymentRoutes(app:FastifyInstance,config:AuthConfig
    if(duplicate){if(duplicate.requestDigest!==digest)fail('Mã yêu cầu đã được dùng cho thanh toán khác.');return {message:'Thanh toán này đã được ghi nhận; không ghi trùng.',paymentId:duplicate.id};}
    const inv=await tx.invoice.findFirstOrThrow({where:{companyId:user.companyId,id:invoiceId},include:{receivable:true,scopes:{include:{items:{include:{revenue:{include:{reconciliation:true}}}}}}}});
    unchanged(inv,body.expectedUpdatedAt);
-   if(!inv.isCurrent||!inv.issuedAt||!['ISSUED','OVERDUE','PARTIALLY_PAID'].includes(inv.status)||inv.currency!=='USD')fail('Chỉ ghi thanh toán cho Invoice hiện hành đã phát hành và còn phải thu.');
+   if(!inv.isCurrent||!inv.issuedAt||!['ISSUED','OVERDUE','PARTIALLY_PAID'].includes(inv.status)||!['USD','VND'].includes(inv.currency))fail('Chỉ ghi thanh toán cho Invoice hiện hành đã phát hành và còn phải thu.');
    const ar=inv.receivable;
    if(!ar||ar.companyId!==user.companyId||!ar.originalAmount.eq(inv.payableAmount)||!ar.paidAmount.eq(inv.paidAmount)||!ar.outstandingAmount.eq(ar.originalAmount.minus(ar.paidAmount)))fail('Invoice và công nợ không khớp; chưa thể ghi thanh toán.');
    if(!inv.scopes.length||inv.scopes.some(s=>!s.isCurrent||s.status!=='INVOICED'||!s.items.length||s.items.some(v=>!v.isCurrent||v.companyId!==user.companyId||!v.revenue.isCurrent||!['INVOICED','PARTIALLY_PAID','PAID'].includes(v.revenue.status)||v.revenue.companyId!==user.companyId||!v.revenue.reconciliation.isCurrent||v.revenue.reconciliation.status!=='APPROVED')))fail('Nguồn Invoice đã bị thay thế; không ghi thanh toán trên bản cũ.');
-   const old=await tx.invoicePayment.aggregate({where:{companyId:user.companyId,invoiceId},_sum:{paidUsd:true}});
-   if(!(old._sum.paidUsd??D('0')).eq(inv.paidAmount))fail('Lịch sử thanh toán không khớp số đã thu.');
-   const a=paymentAmounts(inv.payableAmount.toFixed(2),inv.paidAmount.toFixed(2),body.paidUsd,body.paidVnd,body.fxRate);
-   const payment=await tx.invoicePayment.create({data:{companyId:user.companyId,invoiceId,paymentCode:await code(tx,user.companyId,'INVOICE_PAYMENT','PAY'),requestId:body.requestId,requestDigest:digest,paymentDate:new Date(body.paymentDate),paidUsd:D(body.paidUsd),paidVnd:D(body.paidVnd),fxRate:a.rate,swiftNo:body.swiftNo,bankAccount:body.bankAccount,paymentMethod:body.paymentMethod,note:body.note,approvedById:user.userId}});
+   const old=await tx.invoicePayment.aggregate({where:{companyId:user.companyId,invoiceId},_sum:{paidUsd:true,paidVnd:true}});
+   if(!((inv.currency==='VND'?old._sum.paidVnd:old._sum.paidUsd)??D('0')).eq(inv.paidAmount))fail('Lịch sử thanh toán không khớp số đã thu.');
+   if(inv.currency==='VND'&&(!D(body.paidUsd).isZero()||body.fxRate&& !D(body.fxRate).eq(1)))fail('Invoice VND chỉ phân bổ VND, không nhập khoản USD giả.');
+   const a=inv.currency==='VND'?nativeVndPayment(inv.payableAmount.toFixed(0),inv.paidAmount.toFixed(0),body.paidVnd):paymentAmounts(inv.payableAmount.toFixed(2),inv.paidAmount.toFixed(2),body.paidUsd,body.paidVnd,body.fxRate);
+   const payment=await tx.invoicePayment.create({data:{companyId:user.companyId,invoiceId,allocationCurrency:inv.currency,paymentCode:await code(tx,user.companyId,'INVOICE_PAYMENT','PAY'),requestId:body.requestId,requestDigest:digest,paymentDate:new Date(body.paymentDate),paidUsd:D(body.paidUsd),paidVnd:D(body.paidVnd),fxRate:a.rate,swiftNo:body.swiftNo,bankAccount:body.bankAccount,paymentMethod:body.paymentMethod,note:body.note,approvedById:user.userId}});
    if(bytes){const filename='SWIFT_'+inv.invoiceNumber.replace(/[^a-zA-Z0-9_-]/g,'_')+'_'+body.paymentDate+'_'+payment.paymentCode+'.'+ext;const doc=ext==='pdf'?await persistPdf(tx,user,'InvoicePayment',payment.id,'PAYMENT_SWIFT',filename,bytes,1,files):await persistPaymentImage(tx,user,payment.id,filename,bytes,ext,files);await tx.invoicePayment.update({where:{id:payment.id},data:{documentId:doc.id}});}
    await tx.invoice.update({where:{id:inv.id},data:{paidAmount:a.paidAfter,status:a.status}});
    await tx.accountReceivable.update({where:{id:ar.id},data:{paidAmount:a.paidAfter,outstandingAmount:a.outstanding,status:a.status}});
    await tx.revenue.updateMany({where:{companyId:user.companyId,id:{in:inv.scopes.flatMap(s=>s.items.map(v=>v.revenueId))}},data:{status:a.status}});
-   await audit(tx,user,'INVOICE_PAYMENT_POST','InvoicePayment',payment.id,{invoiceStatus:inv.status,paid:inv.paidAmount,outstanding:ar.outstandingAmount},{...payment,invoiceStatus:a.status,paid:a.paidAfter,outstanding:a.outstanding,cashCurrency:'VND',cashDirection:'IN',approved:true},'Ghi nhận thu tiền và phân bổ USD cho Invoice');
-   return {paymentId:payment.id,message:'Đã ghi nhận thanh toán, cập nhật Invoice và công nợ. Còn phải thu '+a.outstanding.toFixed(2)+' USD.'};
+   await audit(tx,user,'INVOICE_PAYMENT_POST','InvoicePayment',payment.id,{invoiceStatus:inv.status,paid:inv.paidAmount,outstanding:ar.outstandingAmount},{...payment,invoiceStatus:a.status,paid:a.paidAfter,outstanding:a.outstanding,cashCurrency:'VND',cashDirection:'IN',approved:true},'Ghi nhận thu tiền và phân bổ '+inv.currency+' cho Invoice');
+   return {paymentId:payment.id,message:'Đã ghi nhận thanh toán, cập nhật Invoice và công nợ. Còn phải thu '+a.outstanding.toFixed(2)+' '+inv.currency+'.'};
   },{timeout:30000});}catch(e){await rollbackFiles(files);throw e;}
  });
  app.get('/api/v1/invoice-payments/:id/document',{preHandler:requirePermission('PAYMENT_VIEW')},async(request,reply)=>{

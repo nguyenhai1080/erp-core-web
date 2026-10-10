@@ -175,6 +175,39 @@ try{
  check((await post(payUrl,{...finalBody,requestId:randomUUID(),expectedUpdatedAt:paidInvoice.updatedAt.toISOString()})).statusCode,409);
  check((await request('GET',arPath)).json().totals.paid,paidInvoice.payableAmount.toFixed(2));
  check(await prisma.auditLog.count({where:{companyId:company.id,action:'INVOICE_PAYMENT_POST'}}),2);
+ // Manual GST entitlement: no MOVITEL OCR or share calculation; VND end-to-end.
+ const vnatel=await prisma.partner.create({data:{companyId:company.id,partnerCode:marker+'-VN',partnerKey:marker+'-VN',legalName:'Synthetic VNATEL',partnerType:'CUSTOMER'}});
+ const film=await makeService('FILM_CINETOP'),vnContract=await prisma.contract.create({data:{companyId:company.id,partnerId:vnatel.id,contractCode:marker+'-VN',contractName:'Synthetic VNATEL VND',currency:'VND',status:'ACTIVE',dgcDirection:'Output',businessType:'REVENUE_SHARE',contractType:'OTHER',valueType:'REVENUE_SHARE',services:{create:[{companyId:company.id,serviceId:film.id,dgcStatus:'ACTIVE',businessModel:'REVENUE_SHARE'}]}}});
+ const entry={period:'2026-02',serviceId:film.id,contractId:vnContract.id,currency:'VND',amount:'25000000',deduction:'0',fxRate:'25000',note:'User supplied GST entitlement; no auto share'},manualBody={partnerId:vnatel.id,rows:[entry]},murl='/api/v1/manual-revenue';
+ check((await request('POST',murl+'/drafts',manualBody,{'x-csrf-token':'bad'})).statusCode,403);
+ check((await post(murl+'/drafts',{...manualBody,rows:[{...entry,amount:'1.23'}]})).statusCode,409);
+ check((await request('POST',murl+'/drafts',manualBody,foreignHeaders)).statusCode,409);
+ const csv=Buffer.from('period,serviceCode,contractCode,currency,amount,deduction,fxRate,note\r\n2026-02,'+film.serviceCode+','+vnContract.contractCode+',VND,25000000,0,25000,Manual GST entitlement\r\n'),file={filename:'Revenue.csv',base64:csv.toString('base64')};
+ const imported=await post(murl+'/import-preview',{partnerId:vnatel.id,file});check(imported.statusCode,200);check(imported.json().rows[0].usd,'1000.00');check(imported.json().rows[0].vnd,'25000000');check(await prisma.revenue.count({where:{partnerId:vnatel.id}}),0);
+ const saved=await post(murl+'/drafts',{...manualBody,source:file});check(saved.statusCode,201);const mid=saved.json().items[0].id;
+ check((await post(murl+'/drafts',manualBody)).statusCode,409);
+ let mr=await prisma.reconciliation.findUniqueOrThrow({where:{id:mid}});const mb=()=>({expectedUpdatedAt:mr.updatedAt.toISOString(),confirmed:true});
+ check((await post(murl+'/'+mid+'/approve',mb())).statusCode,409);check((await request('GET',murl+'/'+mid+'/source')).rawPayload,csv);check((await request('GET',murl+'/'+mid+'/source',undefined,foreignHeaders)).statusCode,404);
+ check((await post(murl+'/'+mid+'/submit',mb())).statusCode,200);mr=await prisma.reconciliation.findUniqueOrThrow({where:{id:mid}});check(await prisma.revenue.count({where:{partnerId:vnatel.id}}),0);
+ check((await post(murl+'/'+mid+'/approve',{...mb(),expectedUpdatedAt:'2000-01-01T00:00:00.000Z'})).statusCode,409);
+ const manualRace=await Promise.all([post(murl+'/'+mid+'/approve',mb()),post(murl+'/'+mid+'/approve',mb())]);check(manualRace.map(r=>r.statusCode).sort(),[200,409]);check(await prisma.revenue.count({where:{partnerId:vnatel.id}}),1);mr=await prisma.reconciliation.findUniqueOrThrow({where:{id:mid}});check((await post(murl+'/'+mid+'/cancel',mb())).statusCode,409);
+ const manualRevenue=await prisma.revenue.findFirstOrThrow({where:{partnerId:vnatel.id}});check(manualRevenue.currency,'VND');check(manualRevenue.netAmount.toFixed(0),'25000000');check(manualRevenue.calculationJson.nativeWht,'0');
+ const listing=(await request('GET','/api/v1/revenues?partnerId='+vnatel.id)).json();check(listing.items[0].equivalents,{usd:'1000.00',vnd:'25000000'});check(listing.monthlyPayableUsd,'0.00');
+ const vsel={...selection,partnerId:vnatel.id,period:'2026-02',currency:'VND'},vr=await post('/api/v1/invoices/preview',vsel);check(vr.statusCode,200);const vp=vr.json();check(vp.invoices[0].invoice.currency,'VND');check(vp.invoices[0].invoice.lines.length,1);check(vp.invoices[0].invoice.lines[0].serviceId,film.id);check(vp.invoices[0].invoice.totals.payable,'25000000.00');check(vp.invoices[0].invoice.amountInWords.includes('Vietnamese Dong'),true);
+ check((await post('/api/v1/invoices/preview',{...vsel,currency:'USD'})).statusCode,409);
+ const vc={...vsel,digest:vp.digest,placements:vp.invoices.map(i=>({businessKey:i.businessKey,placement:{page:1,x:.6,y:.82,width:.25}})),confirmed:true};
+ check((await post('/api/v1/invoices/preview-pdf',vc)).statusCode,200);const viResponse=await post('/api/v1/invoices/create',vc);check(viResponse.statusCode,201);const vid=viResponse.json().items[0].id;
+ const vx=(await request('GET','/api/v1/invoices/'+vid+'/download?format=workbook'));check(vx.statusCode,200);const vzip=new AdmZip(vx.rawPayload);check(vzip.readAsText('xl/worksheets/sheet1.xml').includes('Revenue VND'),true);check(vx.headers['content-disposition'].endsWith('.xlsx"'),true);
+ const vip=await post('/api/v1/invoices/'+vid+'/issue-preview',{});check(vip.statusCode,200);check(vip.json().items[0].currency,'VND');check((await post('/api/v1/invoices/'+vid+'/issue',{digest:vip.json().digest,confirmedSent:true})).statusCode,200);
+ let vinv=await prisma.invoice.findUniqueOrThrow({where:{id:vid},include:{receivable:true}});check(vinv.currency,'VND');check(vinv.receivable.outstandingAmount.toFixed(0),'25000000');
+ const vpmt={requestId:randomUUID(),expectedUpdatedAt:vinv.updatedAt.toISOString(),paymentDate:'2026-03-01',paidUsd:'0',paidVnd:'10000000',fxRate:'1',swiftNo:'VNATEL-REF',bankAccount:'Synthetic VND account',paymentMethod:'Bank Transfer',note:'Synthetic partial VND receipt',confirmed:true};
+ check((await post('/api/v1/invoices/'+vid+'/payments',{...vpmt,paidUsd:'1'})).statusCode,409);
+ check((await post('/api/v1/invoices/'+vid+'/payments',vpmt)).statusCode,200);check((await post('/api/v1/invoices/'+vid+'/payments',vpmt)).statusCode,200);
+ vinv=await prisma.invoice.findUniqueOrThrow({where:{id:vid},include:{receivable:true}});check(vinv.receivable.outstandingAmount.toFixed(0),'15000000');check(vinv.status,'PARTIALLY_PAID');
+ const next={...vpmt,requestId:randomUUID(),expectedUpdatedAt:vinv.updatedAt.toISOString(),paidVnd:'15000001'};check((await post('/api/v1/invoices/'+vid+'/payments',next)).statusCode,409);check((await post('/api/v1/invoices/'+vid+'/payments',{...next,paidVnd:'15000000'})).statusCode,200);
+ const varResult=(await request('GET','/api/v1/receivables?asOf=2026-03-01&partnerId='+vnatel.id)).json();check(varResult.totalsByCurrency.find(v=>v.currency==='VND').outstanding,'0');check(varResult.totals.original,'0.00');
+ check((await request('GET','/api/v1/invoices/'+vid+'/payments')).json().items.length,2);
+ check((await post('/api/v1/revenue-fx',{period:'2026-01',rate:'25000',source:'Synthetic reporting FX',confirmed:true})).statusCode,200);check((await post('/api/v1/revenue-fx',{period:'2026-01',rate:'26000',source:'Cannot overwrite',confirmed:true})).statusCode,409);
  // Placement uses actual visual crop box for every orthogonal rotation.
  const square=await sharp({create:{width:100,height:100,channels:3,background:'#d80000'}}).png().toBuffer();
  for(const rotation of [0,90,180,270]){const doc=await PDFDocument.create(),page=doc.addPage([300,200]);page.setCropBox(20,15,260,170);page.setRotation(degrees(rotation));const source=Buffer.from(await doc.save({useObjectStreams:false}));const signed=await stampPdf(source,square,'image/png',{page:1,x:.2,y:.2,width:.15});const rendered=await previewReconPage(signed,1),{data:pix,info}=await sharp(rendered).removeAlpha().raw().toBuffer({resolveWithObject:true});const x=Math.floor(info.width*.25),y=Math.floor(info.height*(.2+.075*info.width/info.height)),idx=(y*info.width+x)*info.channels;check(pix[idx]>150&&pix[idx+1]<50&&pix[idx+2]<50,true);}

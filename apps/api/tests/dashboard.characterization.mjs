@@ -20,5 +20,5 @@ const mixed=dashboardSummary([row('parent','MEUBEAT','TOTAL','520.68','52.07','4
 assert.equal(mixed.totalPayableUsd,'471.61');
 assert.equal(mixed.series.length,2);
 assert.equal(mixed.series.find(r=>r.period==='2026-01').revenue,'521.79');
-assert.deepEqual(dashboardSummary([]),{totalPayableUsd:'0.00',services:[],series:[]});
+assert.deepEqual(dashboardSummary([]),{totalPayableUsd:'0.00',nativeTotals:{USD:'0.00',VND:'0'},totals:{usd:'0.00',vnd:'0',missingUsd:0,missingVnd:0},services:[],series:[]});
 console.log('Dashboard: 10 DGC characterization checks passed.');

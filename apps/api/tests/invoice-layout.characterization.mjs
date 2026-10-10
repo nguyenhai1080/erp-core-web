@@ -1,3 +1,4 @@
+import {writeFile,mkdir} from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import {PDFDocument} from 'pdf-lib';
 import sharp from 'sharp';
@@ -14,3 +15,8 @@ const many={...data,lines:Array.from({length:40},(_,i)=>data.lines[i%5])};
 assert.ok((await PDFDocument.load(await renderGstInvoice(many,profile,signing,placement,false))).getPageCount()>1);
 await assert.rejects(renderGstInvoice(many,profile,signing,placement),e=>e.statusCode===400);
 console.log('GST invoice layout: single-page, pagination, last-page signing and overlap guards passed.');
+
+const vnd={...data,currency:'VND',lines:[{...data.lines[0],serviceName:'FILM CINETOP',revenue:'25000000',wht:'0',payable:'25000000'}],totals:{revenue:'25000000',wht:'0',payable:'25000000'},amountInWords:'Twenty Five Million Vietnamese Dong Only'};
+const vndPdf=await renderGstInvoice(vnd,profile,signing,{...placement,y:.82});assert.equal((await PDFDocument.load(vndPdf)).getPageCount(),1);
+if(process.env.FINANCE_PROOF_ROOT){await mkdir(process.env.FINANCE_PROOF_ROOT,{recursive:true});await writeFile(process.env.FINANCE_PROOF_ROOT+'/synthetic-vnd-invoice.pdf',vndPdf);}
+console.log('VND invoice: currency-labelled one-page PDF and native amounts passed.');
